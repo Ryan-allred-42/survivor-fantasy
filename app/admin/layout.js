@@ -33,6 +33,8 @@ export default async function AdminLayout({ children }) {
               { href: "/admin", label: "Overview" },
               { href: "/admin/episodes", label: "Episodes" },
               { href: "/admin/players", label: "Players" },
+              { href: "/admin/leagues", label: "Leagues" },
+              { href: "/admin/users", label: "Users" },
             ].map((item) => (
               <Link
                 key={item.href}
