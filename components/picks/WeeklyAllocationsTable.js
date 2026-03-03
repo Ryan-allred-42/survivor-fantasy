@@ -61,13 +61,99 @@ const DEFAULT_TRIBE = { dot: "bg-muted", text: "text-muted-foreground", border: 
 function tribeStyle(tribe) { return TRIBE_COLORS[tribe] ?? DEFAULT_TRIBE; }
 
 // ─────────────────────────────────────────────────────────────
+// Boot Pick Modal
+// ─────────────────────────────────────────────────────────────
+function BootPickModal({ players, guess, setGuess, onClose }) {
+  const activePlayers = players.filter((p) => p.is_active);
+  const TRIBE_ORDER = ["Cila", "Kalo", "Vatu"];
+  const tribes = [...new Set(activePlayers.map((p) => p.tribe || "Unknown"))];
+  const orderedTribes = [
+    ...TRIBE_ORDER.filter((t) => tribes.includes(t)),
+    ...tribes.filter((t) => !TRIBE_ORDER.includes(t)),
+  ];
+
+  function pick(playerId) {
+    setGuess(playerId);
+    onClose();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="rounded-2xl border w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" style={WARM_CARD}>
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="font-bold text-foreground text-base">🔮 Boot Pick</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Who gets voted out? Correct = +5 pts next week</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-4 space-y-4">
+          {/* Clear pick option */}
+          <button
+            onClick={() => pick(null)}
+            className={`w-full rounded-xl border px-4 py-3 text-sm font-medium text-left transition-all ${
+              !guess ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-white/10 text-muted-foreground hover:border-white/25"
+            }`}
+          >
+            No guess this week
+          </button>
+
+          {orderedTribes.map((tribe) => {
+            const ts = tribeStyle(tribe);
+            const tribePlayers = activePlayers.filter((p) => p.tribe === tribe);
+            return (
+              <div key={tribe}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`w-2 h-2 rounded-full ${ts.dot}`} />
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${ts.text}`}>{tribe}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {tribePlayers.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => pick(p.id)}
+                      className={`rounded-xl border px-3 py-2.5 text-left transition-all flex items-center gap-2.5 ${
+                        guess === p.id
+                          ? "border-primary/50 bg-primary/15 text-primary"
+                          : "border-white/10 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      }`}
+                    >
+                      {p.photo_url ? (
+                        <Image src={p.photo_url} alt="" width={28} height={28} className="rounded-full object-cover shrink-0" style={{ width: 28, height: 28 }} />
+                      ) : (
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${ts.bg} ${ts.text}`}>
+                          {p.name.charAt(0)}
+                        </div>
+                      )}
+                      <span className="text-xs font-medium truncate">{p.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // Boot Guess history row (Step 1)
 // ─────────────────────────────────────────────────────────────
 function BootGuessRow({ episodes, players, userPicksMap, currentEpisodeId, openEpisode, guess, setGuess, onCompare }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [bootModalOpen, setBootModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const activePlayers = players.filter((p) => p.is_active);
 
   return (
     <div
@@ -86,55 +172,16 @@ function BootGuessRow({ episodes, players, userPicksMap, currentEpisodeId, openE
           <StepBadge
             n="1"
             label="Boot Pick"
-            sublabel={openEpisode ? "Who do you think gets voted out this week?" : "Who did you think got voted out?"}
+            sublabel={openEpisode ? "Tap the current episode to pick who gets voted out" : "Who did you think got voted out?"}
             active={openEpisode}
           />
-          {openEpisode && (
-            <button
-              onClick={() => setPickerOpen((v) => !v)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition-all shrink-0 ${
-                guess
-                  ? "border-primary/50 bg-primary/10 text-primary"
-                  : "border-white/15 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-              }`}
-            >
+          {openEpisode && guess && (
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-primary/50 bg-primary/10 text-xs font-medium text-primary shrink-0">
               <span>🔮</span>
-              {guess ? players.find((p) => p.id === guess)?.name ?? "?" : "Select survivor"}
-            </button>
+              {players.find((p) => p.id === guess)?.name ?? "?"}
+            </div>
           )}
         </div>
-
-        {/* Player picker */}
-        {openEpisode && pickerOpen && (
-          <div className="border border-white/10 rounded-xl p-3 bg-black/20 mb-4">
-            <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">
-              Correct guess = +5 pts next week
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => { setGuess(null); setPickerOpen(false); }}
-                className={`px-2.5 py-1 rounded-lg text-xs border transition-all ${
-                  !guess ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-white/15 text-muted-foreground hover:border-white/30"
-                }`}
-              >
-                No guess
-              </button>
-              {activePlayers.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => { setGuess(p.id); setPickerOpen(false); }}
-                  className={`px-2.5 py-1 rounded-lg text-xs border transition-all ${
-                    guess === p.id
-                      ? "border-primary/50 bg-primary/10 text-primary"
-                      : "border-white/15 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Episode cards — horizontal scrollable */}
         <div className="overflow-x-auto -mx-1 px-1">
@@ -147,22 +194,25 @@ function BootGuessRow({ episodes, players, userPicksMap, currentEpisodeId, openE
               const canCompare = isLocked;
               const correct = pick?.guessCorrect;
               const hasPick = pick?.guess != null;
+              const canPickBoot = isCurrent && openEpisode;
 
               let borderCls = "border-white/10";
               let bgCls = "bg-white/5";
-              if (isCurrent && openEpisode) { borderCls = "border-primary/40"; bgCls = "bg-primary/10"; }
-              else if (correct === true)     { borderCls = "border-emerald-500/40"; bgCls = "bg-emerald-500/8"; }
-              else if (correct === false)    { borderCls = "border-destructive/30"; bgCls = "bg-destructive/8"; }
-              else if (isCurrent && isLocked){ borderCls = "border-amber-500/30";   bgCls = "bg-amber-500/8"; }
+              if (canPickBoot)                 { borderCls = "border-primary/40"; bgCls = "bg-primary/10"; }
+              else if (correct === true)       { borderCls = "border-emerald-500/40"; bgCls = "bg-emerald-500/8"; }
+              else if (correct === false)      { borderCls = "border-destructive/30"; bgCls = "bg-destructive/8"; }
+              else if (isCurrent && isLocked)  { borderCls = "border-amber-500/30";   bgCls = "bg-amber-500/8"; }
+
+              const isClickable = canPickBoot || canCompare;
 
               return (
                 <div
                   key={ep.id}
                   className={`relative rounded-xl border ${borderCls} ${bgCls} p-3 w-[96px] shrink-0 flex flex-col gap-1.5 transition-all ${
-                    canCompare ? "cursor-pointer hover:border-primary/40 group" : ""
+                    isClickable ? "cursor-pointer hover:border-primary/40 group" : ""
                   }`}
-                  onClick={canCompare ? () => onCompare(ep.id) : undefined}
-                  title={canCompare ? "Compare everyone's picks" : undefined}
+                  onClick={canPickBoot ? () => setBootModalOpen(true) : canCompare ? () => onCompare(ep.id) : undefined}
+                  title={canPickBoot ? "Pick who gets voted out" : canCompare ? "Compare everyone's picks" : undefined}
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isCurrent ? "text-primary" : "text-muted-foreground"}`}>
@@ -170,11 +220,11 @@ function BootGuessRow({ episodes, players, userPicksMap, currentEpisodeId, openE
                     </span>
                     {correct === true  && <span className="text-emerald-400 text-xs">✓</span>}
                     {correct === false && <span className="text-destructive text-xs">✗</span>}
-                    {isCurrent && openEpisode && <span className="text-primary text-[10px]">now</span>}
+                    {canPickBoot && <span className="text-primary text-[10px]">now</span>}
                     {isCurrent && isLocked && !ep.is_complete && <span className="text-amber-400 text-[10px]">🔒</span>}
                   </div>
 
-                  {isCurrent && openEpisode ? (
+                  {canPickBoot ? (
                     <div className="flex-1">
                       {guess ? (
                         <>
@@ -186,7 +236,7 @@ function BootGuessRow({ episodes, players, userPicksMap, currentEpisodeId, openE
                           </p>
                         </>
                       ) : (
-                        <p className="text-[10px] text-muted-foreground/50 text-center italic mt-1">no pick yet</p>
+                        <p className="text-[10px] text-primary/60 text-center italic mt-1">tap to pick</p>
                       )}
                     </div>
                   ) : hasPick ? (
@@ -215,6 +265,16 @@ function BootGuessRow({ episodes, players, userPicksMap, currentEpisodeId, openE
           </div>
         </div>
       </div>
+
+      {/* Boot pick modal */}
+      {bootModalOpen && (
+        <BootPickModal
+          players={players}
+          guess={guess}
+          setGuess={setGuess}
+          onClose={() => setBootModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -43,3 +43,12 @@ ALTER TABLE survivor_leagues
 UPDATE survivor_leagues
 SET scoring_method = 'full_season'
 WHERE scoring_method IN ('winner_only', 'top_five');
+
+-- ── 5. Backfill missing profiles for existing users ──
+INSERT INTO public.survivor_profiles (id, display_name)
+SELECT
+  u.id,
+  COALESCE(u.raw_user_meta_data->>'display_name', 'Player')
+FROM auth.users u
+LEFT JOIN public.survivor_profiles p ON p.id = u.id
+WHERE p.id IS NULL;
