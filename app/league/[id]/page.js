@@ -76,34 +76,16 @@ export default async function LeaguePage({ params }) {
     return a.name.localeCompare(b.name);
   });
 
-  // ── League members + name map ──
-  // Primary: use regular client (works after migration_fix_leaderboard_rls.sql is run —
-  //          the SECURITY DEFINER function lets members see all members in their leagues).
-  // Fallback: admin client (bypasses RLS entirely, requires service role key).
-  const { data: leagueMembersRegular } = await supabase
+  // ── League members + name map (admin client bypasses RLS) ──
+  const { data: leagueMembers } = await adminSupabase
     .from("survivor_league_members")
     .select("user_id")
     .eq("league_id", id);
 
-  let leagueMembers = leagueMembersRegular ?? [];
+  const memberUserIds = (leagueMembers ?? []).map((m) => m.user_id);
 
-  // If regular client only returned 1 row (still under old restrictive RLS),
-  // try the admin client which bypasses RLS.
-  if (leagueMembers.length <= 1) {
-    const { data: adminMembers } = await adminSupabase
-      .from("survivor_league_members")
-      .select("user_id")
-      .eq("league_id", id);
-    if (adminMembers && adminMembers.length > leagueMembers.length) {
-      leagueMembers = adminMembers;
-    }
-  }
-
-  const memberUserIds = leagueMembers.map((m) => m.user_id);
-
-  // Fetch profiles — readable by all authenticated users after the RLS migration
   const { data: memberProfiles } = memberUserIds.length
-    ? await supabase
+    ? await adminSupabase
         .from("survivor_profiles")
         .select("id, display_name")
         .in("id", memberUserIds)
@@ -113,14 +95,8 @@ export default async function LeaguePage({ params }) {
   for (const p of memberProfiles ?? []) {
     nameMap[p.id] = p.display_name ?? "Anonymous";
   }
-  // Ensure current user always resolves (in case profile read was restricted)
   if (user && !nameMap[user.id]) {
-    const { data: myProfile } = await supabase
-      .from("survivor_profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .maybeSingle();
-    nameMap[user.id] = myProfile?.display_name ?? "You";
+    nameMap[user.id] = "You";
   }
 
   // ── Current user's picks ──
@@ -194,8 +170,8 @@ export default async function LeaguePage({ params }) {
     }
   }
 
-  // ── Leaderboard ──
-  const { data: scoreRows } = await supabase
+  // ── Leaderboard (admin client to see all members' scores) ──
+  const { data: scoreRows } = await adminSupabase
     .from("survivor_scores")
     .select("user_id, cumulative_score, weekly_score, episode_id, survivor_episodes(week_number)")
     .eq("league_id", id)
@@ -213,7 +189,7 @@ export default async function LeaguePage({ params }) {
   const leaderboard = Object.values(latestByUser)
     .map((e) => ({ ...e, displayName: nameMap[e.userId] ?? "Anonymous" }));
 
-  for (const m of leagueMembers) {
+  for (const m of leagueMembers ?? []) {
     if (!latestByUser[m.user_id]) {
       leaderboard.push({ userId: m.user_id, cumulative: 0, lastWeekly: 0, week: 0, displayName: nameMap[m.user_id] ?? "Anonymous" });
     }

@@ -21,10 +21,10 @@ export default function LandingPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" className="text-muted-foreground hover:text-foreground cursor-pointer" asChild>
+          <Button variant="ghost" className="text-muted-foreground hover:text-foreground" asChild>
             <Link href="/auth/signin">Sign In</Link>
           </Button>
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold cursor-pointer" asChild>
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" asChild>
             <Link href="/auth/signup">Get Started</Link>
           </Button>
         </div>
@@ -52,10 +52,10 @@ export default function LandingPage() {
           each week, allocate your points wisely, and see who truly has what it takes.
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-10 h-13 text-base cursor-pointer" asChild>
+          <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-10 h-13 text-base" asChild>
             <Link href="/auth/signup">Start Playing Free</Link>
           </Button>
-          <Button size="lg" variant="outline" className="border-border text-foreground hover:bg-secondary h-13 text-base px-10 cursor-pointer" asChild>
+          <Button size="lg" variant="outline" className="border-border text-foreground hover:bg-secondary h-13 text-base px-10" asChild>
             <Link href="#how-it-works">How It Works</Link>
           </Button>
         </div>
@@ -207,7 +207,7 @@ export default function LandingPage() {
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
           Season 50 is underway. Create your league and invite your tribe today.
         </p>
-        <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 h-13 text-base cursor-pointer" asChild>
+        <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 h-13 text-base" asChild>
           <Link href="/auth/signup">Create Your League</Link>
         </Button>
       </section>
