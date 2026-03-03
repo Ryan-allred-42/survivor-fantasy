@@ -7,6 +7,7 @@ import { isEpisodeLocked } from "@/lib/utils";
 import EpisodeCountdown from "@/components/league/EpisodeCountdown";
 import WeeklyAllocationsTable from "@/components/picks/WeeklyAllocationsTable";
 import LeagueRulesCard from "@/components/league/LeagueRulesCard";
+import Leaderboard from "@/components/league/Leaderboard";
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -202,6 +203,7 @@ export default async function LeaguePage({ params }) {
   leaderboard.sort((a, b) => b.cumulative - a.cumulative);
 
   const seasonStarted = (scoreRows ?? []).length > 0;
+  const completedEpisodes = (episodes ?? []).filter((e) => e.is_complete);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -290,66 +292,15 @@ export default async function LeaguePage({ params }) {
             )}
 
             {/* Leaderboard */}
-            <div
-              className="rounded-2xl overflow-hidden border"
-              style={{
-                background: "linear-gradient(135deg, oklch(0.18 0.06 35), oklch(0.13 0.04 35))",
-                borderColor: "oklch(0.38 0.12 38 / 0.50)",
-              }}
-            >
-              <div className="px-4 py-3 border-b border-border/60">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-bold text-foreground text-sm">Leaderboard</h2>
-                  <span className="text-[10px] text-muted-foreground">{leaderboard.length} {leaderboard.length === 1 ? "member" : "members"}</span>
-                </div>
-                {!seasonStarted && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Scores appear once episodes resolve</p>
-                )}
-              </div>
-              <div className="divide-y divide-border/30">
-                {leaderboard.map((entry, idx) => (
-                  <div
-                    key={entry.userId}
-                    className={`flex items-center gap-3 px-4 py-3 ${entry.userId === user.id ? "bg-primary/5" : ""}`}
-                  >
-                    <span className={`text-sm font-black w-5 text-center shrink-0 ${
-                      idx === 0 ? "text-amber-400" : idx === 1 ? "text-zinc-400" : idx === 2 ? "text-amber-700" : "text-muted-foreground"
-                    }`}>
-                      {idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-foreground truncate">
-                        {entry.displayName}
-                        {entry.userId === user.id && <span className="ml-1 text-primary font-normal">(you)</span>}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      {seasonStarted ? (
-                        <>
-                          <p className="text-xs font-bold text-foreground tabular-nums">{entry.cumulative.toFixed(1)}</p>
-                          {entry.lastWeekly > 0 && (
-                            <p className="text-[10px] text-muted-foreground tabular-nums">+{entry.lastWeekly.toFixed(1)}</p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">—</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {leaderboard.length === 0 && (
-                  <p className="px-4 py-6 text-xs text-muted-foreground text-center">No members yet.</p>
-                )}
-              </div>
-              {leaderboard.length <= 1 && (
-                <div className="px-4 py-3 border-t border-border/40 text-center">
-                  <p className="text-[10px] text-muted-foreground mb-1.5">Invite friends to join with code:</p>
-                  <span className="font-mono text-sm font-bold text-primary tracking-widest bg-primary/10 border border-primary/25 px-3 py-1 rounded-lg">
-                    {league.join_code}
-                  </span>
-                </div>
-              )}
-            </div>
+            <Leaderboard
+              leaderboard={leaderboard}
+              currentUserId={user.id}
+              seasonStarted={seasonStarted}
+              joinCode={league.join_code}
+              completedEpisodes={completedEpisodes}
+              allMembersPicksMap={allMembersPicksMap}
+              players={sortedPlayers}
+            />
           </div>
         </div>
       </main>
