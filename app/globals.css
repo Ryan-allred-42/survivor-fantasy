@@ -83,8 +83,8 @@
   border-color: var(--color-border);
 }
 
-button, [role="button"] {
-  cursor: pointer;
+button, [role="button"], [type="button"], [type="submit"], [type="reset"] {
+  cursor: pointer !important;
 }
 
 body {

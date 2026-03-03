@@ -95,6 +95,11 @@ export default async function LeaguePage({ params }) {
   for (const p of memberProfiles ?? []) {
     nameMap[p.id] = p.display_name ?? "Anonymous";
   }
+  for (const uid of memberUserIds) {
+    if (!nameMap[uid]) {
+      nameMap[uid] = `Player ${uid.slice(0, 4)}`;
+    }
+  }
   if (user && !nameMap[user.id]) {
     nameMap[user.id] = "You";
   }
@@ -293,7 +298,10 @@ export default async function LeaguePage({ params }) {
               }}
             >
               <div className="px-4 py-3 border-b border-border/60">
-                <h2 className="font-bold text-foreground text-sm">Leaderboard</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-bold text-foreground text-sm">Leaderboard</h2>
+                  <span className="text-[10px] text-muted-foreground">{leaderboard.length} {leaderboard.length === 1 ? "member" : "members"}</span>
+                </div>
                 {!seasonStarted && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">Scores appear once episodes resolve</p>
                 )}
@@ -333,6 +341,14 @@ export default async function LeaguePage({ params }) {
                   <p className="px-4 py-6 text-xs text-muted-foreground text-center">No members yet.</p>
                 )}
               </div>
+              {leaderboard.length <= 1 && (
+                <div className="px-4 py-3 border-t border-border/40 text-center">
+                  <p className="text-[10px] text-muted-foreground mb-1.5">Invite friends to join with code:</p>
+                  <span className="font-mono text-sm font-bold text-primary tracking-widest bg-primary/10 border border-primary/25 px-3 py-1 rounded-lg">
+                    {league.join_code}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
