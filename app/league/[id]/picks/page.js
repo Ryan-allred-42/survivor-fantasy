@@ -20,7 +20,7 @@ export default async function PicksPage({ params }) {
 
   const { data: league } = await supabase
     .from("survivor_leagues")
-    .select("id, name, scoring_method, owner_id")
+    .select("id, name, owner_id")
     .eq("id", leagueId)
     .single();
 

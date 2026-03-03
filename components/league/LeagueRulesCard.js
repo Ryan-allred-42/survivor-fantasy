@@ -1,40 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { SCORING_METHOD_LABELS, FULL_SEASON_MULTIPLIERS } from "@/lib/utils";
+import { FULL_SEASON_MULTIPLIERS } from "@/lib/utils";
 
-const SCORING_RULES = {
-  winner_only: {
-    icon: "👑",
-    summary: "Only your points allocated to the sole Survivor winner count at the end of the season.",
-    detail: [
-      "Allocate up to your point budget each week across any active players.",
-      "At the season finale, only your allocations on the winner are counted toward your final score.",
-      "Weekly guessing bonuses still apply — nail the tribal council and bank extra points.",
-      "Highest risk, highest reward: go all-in or spread bets to hedge.",
-    ],
-  },
-  top_five: {
-    icon: "🏅",
-    summary: "Points you placed on any of the top 5 finalists contribute to your final score.",
-    detail: [
-      "Allocate up to your point budget each week across any active players.",
-      "Any points you put on a player who finishes in the top 5 (Final 5 and beyond) count toward your score.",
-      "Weekly guessing bonuses still apply — correct tribal guesses give you +5 pts next week.",
-      "Balance spreading allocations broadly vs. concentrating on likely finalists.",
-    ],
-  },
-  full_season: {
-    icon: "🔥",
-    summary: "Every elimination scores points. Points × a multiplier that grows steeply in the final five.",
-    detail: [
-      "Allocate up to your point budget each week across any active players.",
-      "When a player is eliminated, your points on them are multiplied by their boot-order multiplier (see table below).",
-      "24th place = 1×. The multiplier grows as players finish higher. 3rd = 50×, 2nd = 75×, winner = 100×.",
-      "Correct tribal guesses give +5 pts next week — picking the boot right matters more than ever.",
-    ],
-  },
-};
+const SCORING_DETAIL = [
+  "Allocate up to your point budget each week across any active players.",
+  "When a player is eliminated, your points on them are multiplied by their boot-order multiplier (see table below).",
+  "24th place = 1×. The multiplier grows as players finish higher. 3rd = 50×, 2nd = 75×, winner = 100×.",
+  "Correct tribal guesses give +5 pts next week — picking the boot right matters more than ever.",
+];
 
 const GENERAL_RULES = [
   { icon: "📊", title: "Weekly Budget", desc: "You start each week with 10 points to allocate across any active players. You can put all 10 on one player or spread them any way you like." },
@@ -43,10 +17,8 @@ const GENERAL_RULES = [
   { icon: "⏰", title: "Lock Time", desc: "Picks lock every Wednesday at 8 PM Eastern before the episode airs. Late submissions are not accepted." },
 ];
 
-export default function LeagueRulesCard({ scoringMethod, joinCode }) {
+export default function LeagueRulesCard({ joinCode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const scoring = SCORING_RULES[scoringMethod] ?? SCORING_RULES.full_season;
-  const label = SCORING_METHOD_LABELS[scoringMethod] ?? scoringMethod;
 
   return (
     <div
@@ -62,15 +34,17 @@ export default function LeagueRulesCard({ scoringMethod, joinCode }) {
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <span className="text-xl shrink-0">{scoring.icon}</span>
+          <span className="text-xl shrink-0">🔥</span>
           <div className="text-left min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-foreground">League Rules</span>
               <span className="text-xs bg-primary/15 text-primary border border-primary/25 px-2 py-0.5 rounded-full font-medium">
-                {label}
+                Full Season
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{scoring.summary}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+              Every elimination scores points. Points × a multiplier that grows steeply in the final five.
+            </p>
           </div>
         </div>
         <svg
@@ -96,11 +70,13 @@ export default function LeagueRulesCard({ scoringMethod, joinCode }) {
           {/* Scoring method detail */}
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">
-              {scoring.icon} {label} Scoring
+              🔥 Full Season Scoring
             </p>
-            <p className="text-sm text-muted-foreground mb-3">{scoring.summary}</p>
+            <p className="text-sm text-muted-foreground mb-3">
+              Every elimination scores points. Points × a multiplier that grows steeply in the final five.
+            </p>
             <ul className="space-y-2">
-              {scoring.detail.map((rule, i) => (
+              {SCORING_DETAIL.map((rule, i) => (
                 <li key={i} className="flex items-start gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary/50 mt-1.5 shrink-0" />
                   <span className="text-xs text-muted-foreground leading-relaxed">{rule}</span>
@@ -109,71 +85,63 @@ export default function LeagueRulesCard({ scoringMethod, joinCode }) {
             </ul>
           </div>
 
-          {/* Full Season multiplier table */}
-          {scoringMethod === "full_season" && (
-            <>
-              <div className="border-t border-border/40" />
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">
-                  🔥 Boot Multiplier Table
-                </p>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Score = points you allocated to that player × multiplier shown below.
-                </p>
-                <div className="overflow-x-auto rounded-xl border border-border/50">
-                  <table className="w-full text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-secondary/40 border-b border-border/40">
-                        <th className="px-3 py-2 text-left text-muted-foreground font-semibold">Place</th>
-                        <th className="px-3 py-2 text-right text-muted-foreground font-semibold">Multiplier</th>
-                        <th className="px-3 py-2 text-left text-muted-foreground font-semibold">Place</th>
-                        <th className="px-3 py-2 text-right text-muted-foreground font-semibold">Multiplier</th>
+          {/* Boot multiplier table */}
+          <div className="border-t border-border/40" />
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">
+              🔥 Boot Multiplier Table
+            </p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Score = points you allocated to that player × multiplier shown below.
+            </p>
+            <div className="overflow-x-auto rounded-xl border border-border/50">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-secondary/40 border-b border-border/40">
+                    <th className="px-3 py-2 text-left text-muted-foreground font-semibold">Place</th>
+                    <th className="px-3 py-2 text-right text-muted-foreground font-semibold">Multiplier</th>
+                    <th className="px-3 py-2 text-left text-muted-foreground font-semibold">Place</th>
+                    <th className="px-3 py-2 text-right text-muted-foreground font-semibold">Multiplier</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 12 }, (_, row) => {
+                    const leftPlace  = row + 1;
+                    const rightPlace = row + 1 + 12;
+                    const leftDbPlacement  = 25 - leftPlace;
+                    const rightDbPlacement = 25 - rightPlace;
+                    const leftMult  = FULL_SEASON_MULTIPLIERS[leftDbPlacement]  ?? 0;
+                    const rightMult = FULL_SEASON_MULTIPLIERS[rightDbPlacement] ?? 0;
+                    const isTopFiveL = leftPlace  <= 5;
+                    const ordinal = (n) => {
+                      const s = ["th","st","nd","rd"];
+                      const v = n % 100;
+                      return n + (s[(v-20)%10] || s[v] || s[0]);
+                    };
+                    return (
+                      <tr key={row} className="border-b border-border/20 last:border-0">
+                        <td className={`px-3 py-1.5 font-medium ${isTopFiveL ? "text-primary/80" : "text-muted-foreground"}`}>
+                          {ordinal(leftPlace)}{leftPlace === 1 ? " 🏆" : isTopFiveL ? " ★" : ""}
+                        </td>
+                        <td className={`px-3 py-1.5 text-right font-bold tabular-nums ${isTopFiveL ? "text-primary" : "text-foreground"}`}>
+                          {leftMult === 0 ? "—" : `${leftMult}×`}
+                        </td>
+                        <td className="px-3 py-1.5 text-muted-foreground">
+                          {ordinal(rightPlace)}
+                        </td>
+                        <td className="px-3 py-1.5 text-right font-bold tabular-nums text-foreground">
+                          {rightMult === 0 ? "—" : `${rightMult}×`}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {Array.from({ length: 12 }, (_, row) => {
-                        // Left column: places 1–12 (best finishes, top of table)
-                        // Right column: places 13–24 (worst finishes)
-                        const leftPlace  = row + 1;       // 1st → 12th
-                        const rightPlace = row + 1 + 12;  // 13th → 24th
-                        // DB placement = 25 - placeFinish (1st=db:24, 24th=db:1)
-                        const leftDbPlacement  = 25 - leftPlace;
-                        const rightDbPlacement = 25 - rightPlace;
-                        const leftMult  = FULL_SEASON_MULTIPLIERS[leftDbPlacement]  ?? 0;
-                        const rightMult = FULL_SEASON_MULTIPLIERS[rightDbPlacement] ?? 0;
-                        const isTopFiveL = leftPlace  <= 5;
-                        const isTopFiveR = rightPlace <= 5; // never for right column
-                        const ordinal = (n) => {
-                          const s = ["th","st","nd","rd"];
-                          const v = n % 100;
-                          return n + (s[(v-20)%10] || s[v] || s[0]);
-                        };
-                        return (
-                          <tr key={row} className="border-b border-border/20 last:border-0">
-                            <td className={`px-3 py-1.5 font-medium ${isTopFiveL ? "text-primary/80" : "text-muted-foreground"}`}>
-                              {ordinal(leftPlace)}{leftPlace === 1 ? " 🏆" : isTopFiveL ? " ★" : ""}
-                            </td>
-                            <td className={`px-3 py-1.5 text-right font-bold tabular-nums ${isTopFiveL ? "text-primary" : "text-foreground"}`}>
-                              {leftMult === 0 ? "—" : `${leftMult}×`}
-                            </td>
-                            <td className={`px-3 py-1.5 text-muted-foreground`}>
-                              {ordinal(rightPlace)}
-                            </td>
-                            <td className="px-3 py-1.5 text-right font-bold tabular-nums text-foreground tabular-nums">
-                              {rightMult === 0 ? "—" : `${rightMult}×`}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  <p className="px-3 py-2 text-[10px] text-muted-foreground/60 border-t border-border/20">
-                    ★ Top 5 &nbsp;·&nbsp; 🏆 Winner &nbsp;·&nbsp; Score = points you allocated × multiplier
-                  </p>
-                </div>
-              </div>
-            </>
-          )}
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="px-3 py-2 text-[10px] text-muted-foreground/60 border-t border-border/20">
+                ★ Top 5 &nbsp;·&nbsp; 🏆 Winner &nbsp;·&nbsp; Score = points you allocated × multiplier
+              </p>
+            </div>
+          </div>
 
           {/* Divider */}
           <div className="border-t border-border/40" />

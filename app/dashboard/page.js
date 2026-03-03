@@ -5,7 +5,7 @@ import NavBar from "@/components/NavBar";
 import CardCreateLeague from "@/components/league/CardCreateLeague";
 import CardJoinLeague from "@/components/league/CardJoinLeague";
 import { Badge } from "@/components/ui/badge";
-import { SCORING_METHOD_LABELS } from "@/lib/utils";
+import { SCORING_METHOD_LABEL } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard — Survivor Fantasy" };
 
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
                           borderColor: "oklch(0.65 0.22 38 / 0.30)",
                         }}
                       >
-                        {SCORING_METHOD_LABELS[league.scoring_method]}
+                        {SCORING_METHOD_LABEL}
                       </Badge>
                       <span className="text-xs text-muted-foreground font-mono tracking-widest">
                         {league.join_code}

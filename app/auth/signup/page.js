@@ -61,7 +61,7 @@ export default function SignUpPage() {
                   className="bg-input border-border text-foreground placeholder:text-muted-foreground"
                 />
               </div>
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11">
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11 cursor-pointer">
                 Create Account
               </Button>
             </div>

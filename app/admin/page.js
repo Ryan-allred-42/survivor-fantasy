@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { triggerSeasonEnd } from "@/actions/admin";
-import { Button } from "@/components/ui/button";
 
 export default async function AdminOverviewPage() {
   const supabase = await createClient();
@@ -83,19 +81,6 @@ export default async function AdminOverviewPage() {
         </div>
       </div>
 
-      {/* Season end trigger */}
-      <div className="gradient-card border border-amber-500/30 rounded-2xl p-6">
-        <h2 className="text-lg font-bold text-foreground mb-2">Season End Scoring</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Use this after the finale to calculate final scores for <strong>Winner Only</strong> and{" "}
-          <strong>Jury's Choice</strong> leagues. Only run this once — after all placements are set.
-        </p>
-        <form action={triggerSeasonEnd}>
-          <Button type="submit" className="bg-amber-500 hover:bg-amber-600 text-black font-semibold">
-            Run Season-End Scoring
-          </Button>
-        </form>
-      </div>
     </div>
   );
 }

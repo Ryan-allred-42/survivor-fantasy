@@ -2,31 +2,16 @@
 
 import { useState, useActionState } from "react";
 import { createLeague } from "@/actions/leagues";
-import { SCORING_METHOD_LABELS, SCORING_METHOD_DESCRIPTIONS } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const METHODS = ["winner_only", "top_five", "full_season"];
-const METHOD_COLORS = {
-  winner_only: "border-red-500/40 data-[selected=true]:border-red-500 data-[selected=true]:bg-red-500/10",
-  top_five:    "border-amber-500/40 data-[selected=true]:border-amber-500 data-[selected=true]:bg-amber-500/10",
-  full_season: "border-emerald-500/40 data-[selected=true]:border-emerald-500 data-[selected=true]:bg-emerald-500/10",
-};
-const METHOD_TEXT_COLORS = {
-  winner_only: "text-red-400",
-  top_five:    "text-amber-400",
-  full_season: "text-emerald-400",
-};
-
 export default function CardCreateLeague() {
   const [open, setOpen] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState("full_season");
   const [createdLeague, setCreatedLeague] = useState(null);
 
   const [state, formAction, isPending] = useActionState(async (_, formData) => {
-    formData.set("scoring_method", selectedMethod);
     const result = await createLeague(formData);
     if (result.success) setCreatedLeague(result.league);
     return result;
@@ -34,20 +19,19 @@ export default function CardCreateLeague() {
 
   function handleClose(isOpen) {
     setOpen(isOpen);
-    if (!isOpen) { setCreatedLeague(null); setSelectedMethod("full_season"); }
+    if (!isOpen) setCreatedLeague(null);
   }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
-        {/* Card — flex column so content fills height and button stays at bottom */}
         <button className="gradient-card border border-border hover:border-primary/50 rounded-2xl p-8 text-left transition-all group cursor-pointer w-full flex flex-col h-full">
           <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center mb-5 group-hover:bg-primary/25 transition-colors shrink-0">
             <span className="text-2xl">🏝️</span>
           </div>
           <h3 className="text-xl font-bold text-foreground mb-2">Create a League</h3>
           <p className="text-sm text-muted-foreground leading-relaxed flex-1">
-            Start a new league, choose your scoring mode, and share the invite code with your tribe.
+            Start a new league and share the invite code with your tribe. All leagues use Full Season scoring.
           </p>
           <div className="mt-5 text-xs font-semibold text-primary group-hover:underline">
             Create league →
@@ -101,29 +85,11 @@ export default function CardCreateLeague() {
                 className="bg-input border-border text-foreground placeholder:text-muted-foreground"
               />
             </div>
-            <div className="space-y-3">
-              <Label className="text-foreground">Scoring Method</Label>
-              <div className="grid gap-3">
-                {METHODS.map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    data-selected={selectedMethod === method}
-                    onClick={() => setSelectedMethod(method)}
-                    className={`border rounded-xl p-4 text-left transition-all ${METHOD_COLORS[method]}`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`font-bold text-sm ${METHOD_TEXT_COLORS[method]}`}>
-                        {SCORING_METHOD_LABELS[method]}
-                      </span>
-                      {selectedMethod === method && <span className="text-xs text-primary">Selected</span>}
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {SCORING_METHOD_DESCRIPTIONS[method]}
-                    </p>
-                  </button>
-                ))}
-              </div>
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+              <p className="font-bold text-sm text-emerald-400 mb-1">Full Season Scoring</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Every elimination scores points. Points × multiplier based on boot order — early boots are cheap, the top 5 are worth a fortune.
+              </p>
             </div>
             <Button
               type="submit"

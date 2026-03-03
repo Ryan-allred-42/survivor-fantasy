@@ -16,12 +16,8 @@ export async function createLeague(formData) {
   if (!user) return { error: "Not authenticated" };
 
   const name = formData.get("name")?.toString().trim();
-  const scoringMethod = formData.get("scoring_method")?.toString();
 
   if (!name) return { error: "League name is required" };
-  if (!["winner_only", "top_five", "full_season"].includes(scoringMethod)) {
-    return { error: "Invalid scoring method" };
-  }
 
   // Generate a unique join code
   let joinCode;
@@ -41,7 +37,7 @@ export async function createLeague(formData) {
 
   const { data: league, error } = await supabase
     .from("survivor_leagues")
-    .insert({ name, owner_id: user.id, scoring_method: scoringMethod, join_code: joinCode, season: 50 })
+    .insert({ name, owner_id: user.id, scoring_method: "full_season", join_code: joinCode, season: 50 })
     .select()
     .single();
 

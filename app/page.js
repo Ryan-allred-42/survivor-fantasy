@@ -21,16 +21,12 @@ export default function LandingPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/auth/signin">
-            <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
-              Sign In
-            </Button>
-          </Link>
-          <Link href="/auth/signup">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-              Get Started
-            </Button>
-          </Link>
+          <Button variant="ghost" className="text-muted-foreground hover:text-foreground cursor-pointer" asChild>
+            <Link href="/auth/signin">Sign In</Link>
+          </Button>
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold cursor-pointer" asChild>
+            <Link href="/auth/signup">Get Started</Link>
+          </Button>
         </div>
       </nav>
 
@@ -56,24 +52,20 @@ export default function LandingPage() {
           each week, allocate your points wisely, and see who truly has what it takes.
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Link href="/auth/signup">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-10 h-13 text-base">
-              Start Playing Free
-            </Button>
-          </Link>
-          <Link href="#how-it-works">
-            <Button size="lg" variant="outline" className="border-border text-foreground hover:bg-secondary h-13 text-base px-10">
-              How It Works
-            </Button>
-          </Link>
+          <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-10 h-13 text-base cursor-pointer" asChild>
+            <Link href="/auth/signup">Start Playing Free</Link>
+          </Button>
+          <Button size="lg" variant="outline" className="border-border text-foreground hover:bg-secondary h-13 text-base px-10 cursor-pointer" asChild>
+            <Link href="#how-it-works">How It Works</Link>
+          </Button>
         </div>
 
         {/* Stats row */}
         <div className="mt-16 grid grid-cols-3 gap-8 md:gap-16">
           {[
-            { value: "18", label: "Castaways" },
+            { value: "24", label: "Castaways" },
             { value: "~14", label: "Episodes" },
-            { value: "3", label: "Scoring Modes" },
+            { value: "100×", label: "Winner Multiplier" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="text-3xl md:text-4xl font-black text-gradient">{stat.value}</div>
@@ -101,8 +93,8 @@ export default function LandingPage() {
               },
               {
                 step: "02",
-                title: "Choose Your Mode",
-                desc: "Pick from three scoring methods: Winner Only, Top 5, or Full Season scoring.",
+                title: "Invite Your Tribe",
+                desc: "Share your 5-character league code with friends so they can join and compete.",
               },
               {
                 step: "03",
@@ -128,60 +120,37 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Scoring Modes */}
+      {/* Scoring */}
       <section className="py-20 px-6 md:px-12 bg-secondary/20 border-t border-border/40">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-black text-center mb-4">
-            <span className="text-gradient">3 Ways to Play</span>
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-black mb-4">
+            <span className="text-gradient">Full Season Scoring</span>
           </h2>
-          <p className="text-center text-muted-foreground mb-14 max-w-xl mx-auto">
-            Each league chooses one scoring mode at creation. Play with your tribe your way.
+          <p className="text-muted-foreground mb-14 max-w-xl mx-auto">
+            Every elimination matters. Allocate your points wisely — the longer a player lasts, the bigger the multiplier.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
-                name: "Final Tribal",
-                badge: "Winner Only",
-                color: "text-red-400",
-                borderColor: "border-red-500/30",
-                desc: "Only your points allocated to the sole winner count. Maximum risk, maximum reward. One survivor, one champion.",
-                risk: "Extreme Risk",
+                value: "1×",
+                label: "First Boot",
+                desc: "The first player voted out earns the lowest multiplier. Low risk, low reward.",
               },
               {
-                name: "Jury's Choice",
-                badge: "Top 5 Only",
-                color: "text-amber-400",
-                borderColor: "border-amber-500/30",
-                desc: "Your allocations to the final 5 players count. Back strong players early and hold on for the long game.",
-                risk: "Medium Risk",
-                featured: true,
+                value: "50×",
+                label: "Third Place",
+                desc: "Making it to the final three means your points on that player are multiplied by 50.",
               },
               {
-                name: "Full Season",
-                badge: "All Eliminations",
-                color: "text-emerald-400",
-                borderColor: "border-emerald-500/30",
-                desc: "Every elimination earns points. Longer-lasting players are worth more. Weekly scoring keeps everyone in the hunt.",
-                risk: "Beginner Friendly",
+                value: "100×",
+                label: "Sole Survivor",
+                desc: "The winner earns the maximum 100× multiplier. Back the right horse and dominate.",
               },
-            ].map((mode) => (
-              <div
-                key={mode.name}
-                className={`gradient-card border rounded-2xl p-7 relative ${
-                  mode.featured ? "border-primary/50 ring-1 ring-primary/20" : mode.borderColor
-                }`}
-              >
-                {mode.featured && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground text-xs px-3">Most Popular</Badge>
-                  </div>
-                )}
-                <Badge className={`mb-4 text-xs font-bold bg-transparent border ${mode.borderColor} ${mode.color}`}>
-                  {mode.badge}
-                </Badge>
-                <h3 className={`text-xl font-black mb-3 ${mode.color}`}>{mode.name}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{mode.desc}</p>
-                <span className="text-xs text-muted-foreground italic">{mode.risk}</span>
+            ].map((item) => (
+              <div key={item.label} className="gradient-card border border-primary/30 rounded-2xl p-7">
+                <div className="text-4xl font-black text-gradient mb-3">{item.value}</div>
+                <h3 className="text-lg font-bold text-foreground mb-2">{item.label}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -238,11 +207,9 @@ export default function LandingPage() {
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
           Season 50 is underway. Create your league and invite your tribe today.
         </p>
-        <Link href="/auth/signup">
-          <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 h-13 text-base">
-            Create Your League
-          </Button>
-        </Link>
+        <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 h-13 text-base cursor-pointer" asChild>
+          <Link href="/auth/signup">Create Your League</Link>
+        </Button>
       </section>
 
       {/* Footer */}

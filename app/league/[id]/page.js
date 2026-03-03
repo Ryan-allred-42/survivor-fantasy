@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import NavBar from "@/components/NavBar";
 import { Badge } from "@/components/ui/badge";
-import { SCORING_METHOD_LABELS, isEpisodeLocked } from "@/lib/utils";
+import { isEpisodeLocked } from "@/lib/utils";
 import EpisodeCountdown from "@/components/league/EpisodeCountdown";
 import WeeklyAllocationsTable from "@/components/picks/WeeklyAllocationsTable";
 import LeagueRulesCard from "@/components/league/LeagueRulesCard";
@@ -238,7 +238,7 @@ export default async function LeaguePage({ params }) {
             <h1 className="text-2xl md:text-3xl font-black text-foreground">{league.name}</h1>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <Badge className="bg-secondary text-secondary-foreground border-border text-xs">
-                {SCORING_METHOD_LABELS[league.scoring_method]}
+                Full Season
               </Badge>
               <span className="text-xs text-muted-foreground font-mono">Code: {league.join_code}</span>
               {currentEpisode && !isLocked && (
@@ -254,7 +254,7 @@ export default async function LeaguePage({ params }) {
         </div>
 
         {/* ── Rules card ───────────────────────────────────── */}
-        <LeagueRulesCard scoringMethod={league.scoring_method} joinCode={league.join_code} />
+        <LeagueRulesCard joinCode={league.join_code} />
 
         {/* ── Main grid: picks + sidebar ───────────────────── */}
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-5">

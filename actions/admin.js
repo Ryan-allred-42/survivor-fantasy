@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { resolveEpisode, resolveSeasonEnd } from "@/lib/scoring";
+import { resolveEpisode } from "@/lib/scoring";
 import { revalidatePath } from "next/cache";
 
 async function requireAdmin() {
@@ -142,14 +142,3 @@ export async function addPlayer(playerData) {
   return { success: true, player: data };
 }
 
-/**
- * Trigger end-of-season scoring (winner_only and top_five leagues).
- */
-export async function triggerSeasonEnd() {
-  const auth = await requireAdmin();
-  if (auth.error) return auth;
-
-  const result = await resolveSeasonEnd(50);
-  revalidatePath("/admin");
-  return result;
-}

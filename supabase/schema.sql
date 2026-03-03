@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS survivor_leagues (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name            text NOT NULL,
   owner_id        uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  scoring_method  text NOT NULL CHECK (scoring_method IN ('winner_only', 'top_five', 'full_season')),
+  scoring_method  text NOT NULL DEFAULT 'full_season' CHECK (scoring_method = 'full_season'),
   join_code       char(5) NOT NULL UNIQUE,
   season          int NOT NULL DEFAULT 50,
   created_at      timestamptz NOT NULL DEFAULT now()
@@ -119,10 +119,10 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
   INSERT INTO public.survivor_profiles (id, display_name)
-  VALUES (NEW.id, NEW.raw_user_meta_data->>'display_name');
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'display_name', 'Player'));
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
