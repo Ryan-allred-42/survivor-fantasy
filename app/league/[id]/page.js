@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import NavBar from "@/components/NavBar";
 import { Badge } from "@/components/ui/badge";
-import { isEpisodeLocked } from "@/lib/utils";
+import { isEpisodeLocked, FULL_SEASON_MULTIPLIERS } from "@/lib/utils";
 import EpisodeCountdown from "@/components/league/EpisodeCountdown";
 import WeeklyAllocationsTable from "@/components/picks/WeeklyAllocationsTable";
 import LeagueRulesCard from "@/components/league/LeagueRulesCard";
@@ -202,6 +202,101 @@ export default async function LeaguePage({ params }) {
   }
   leaderboard.sort((a, b) => b.cumulative - a.cumulative);
 
+  // ── Max points potential ──
+  // For each user: if the player they allocated the most points to finishes 1st (100x),
+  // second-most finishes 2nd (75x), etc., what's the best possible final score?
+  const activePlayers = (players ?? []).filter((p) => p.is_active);
+  const totalPlayerCount = (players ?? []).length;
+
+  // Remaining placements = slots not yet assigned (active player count determines these)
+  // Active players will occupy the top N placement slots
+  // e.g. if 22 active remain, they'll fill placements 3..24 (the top 22)
+  const eliminatedCount = totalPlayerCount - activePlayers.length;
+  const remainingMultipliers = [];
+  for (let p = eliminatedCount + 1; p <= totalPlayerCount; p++) {
+    remainingMultipliers.push(FULL_SEASON_MULTIPLIERS[p] ?? p);
+  }
+  remainingMultipliers.sort((a, b) => b - a); // highest first
+
+  // Fetch all members' allocations for the current episode to compute max potential
+  let memberAllocationsMap = {}; // { userId: [{ playerId, points }] }
+  if (currentEpisodeId) {
+    const { data: allCurrentPicks } = await adminSupabase
+      .from("survivor_picks")
+      .select("id, user_id, total_points_allocated")
+      .eq("league_id", id)
+      .eq("episode_id", currentEpisodeId);
+
+    const currentPickIds = (allCurrentPicks ?? []).map((p) => p.id);
+    let currentAllocs = [];
+    if (currentPickIds.length > 0) {
+      const { data } = await adminSupabase
+        .from("survivor_allocations")
+        .select("pick_id, player_id, points")
+        .in("pick_id", currentPickIds);
+      currentAllocs = data ?? [];
+    }
+
+    for (const pick of allCurrentPicks ?? []) {
+      const allocs = currentAllocs
+        .filter((a) => a.pick_id === pick.id)
+        .map((a) => ({ playerId: a.player_id, points: a.points }));
+      memberAllocationsMap[pick.user_id] = allocs;
+    }
+  }
+
+  // Also gather all allocations for completed episodes to compute running totals per active player
+  // We need to know total points allocated to each active player across ALL weeks for a true max potential
+  const allCompletedEpisodeIds = (episodes ?? []).filter((e) => e.is_complete).map((e) => e.id);
+  let allTimeAllocsMap = {}; // { userId: { playerId: totalPoints } }
+
+  if (allCompletedEpisodeIds.length > 0 || currentEpisodeId) {
+    const episodeIdsToFetch = [...allCompletedEpisodeIds];
+    if (currentEpisodeId) episodeIdsToFetch.push(currentEpisodeId);
+
+    const { data: allPicks } = await adminSupabase
+      .from("survivor_picks")
+      .select("id, user_id, episode_id")
+      .eq("league_id", id)
+      .in("episode_id", episodeIdsToFetch);
+
+    const allPickIds = (allPicks ?? []).map((p) => p.id);
+    let allAllocs = [];
+    if (allPickIds.length > 0) {
+      const { data } = await adminSupabase
+        .from("survivor_allocations")
+        .select("pick_id, player_id, points")
+        .in("pick_id", allPickIds);
+      allAllocs = data ?? [];
+    }
+
+    for (const pick of allPicks ?? []) {
+      if (!allTimeAllocsMap[pick.user_id]) allTimeAllocsMap[pick.user_id] = {};
+      const pickAllocs = allAllocs.filter((a) => a.pick_id === pick.id);
+      for (const a of pickAllocs) {
+        // Only count allocations to still-active players for max potential
+        if (activePlayers.some((p) => p.id === a.player_id)) {
+          allTimeAllocsMap[pick.user_id][a.player_id] =
+            (allTimeAllocsMap[pick.user_id][a.player_id] ?? 0) + a.points;
+        }
+      }
+    }
+  }
+
+  // Compute max potential for each leaderboard entry
+  for (const entry of leaderboard) {
+    const playerPoints = allTimeAllocsMap[entry.userId] ?? {};
+    const sortedPoints = Object.values(playerPoints).sort((a, b) => b - a);
+
+    // Pair highest allocation with highest remaining multiplier
+    let maxFromActive = 0;
+    for (let i = 0; i < Math.min(sortedPoints.length, remainingMultipliers.length); i++) {
+      maxFromActive += sortedPoints[i] * remainingMultipliers[i];
+    }
+
+    entry.maxPotential = entry.cumulative + maxFromActive;
+  }
+
   const seasonStarted = (scoreRows ?? []).length > 0;
   const completedEpisodes = (episodes ?? []).filter((e) => e.is_complete);
 
@@ -300,6 +395,10 @@ export default async function LeaguePage({ params }) {
               completedEpisodes={completedEpisodes}
               allMembersPicksMap={allMembersPicksMap}
               players={sortedPlayers}
+              showMaxPotential={seasonStarted}
+              multipliers={FULL_SEASON_MULTIPLIERS}
+              allTimeAllocsMap={allTimeAllocsMap}
+              remainingMultipliers={remainingMultipliers}
             />
           </div>
         </div>

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useActionState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { submitPicks } from "@/actions/picks";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import EpisodeCountdown from "@/components/league/EpisodeCountdown";
+import PlayerAvatar from "@/components/PlayerAvatar";
 import { toast } from "sonner";
 
 export default function PicksForm({
@@ -181,20 +181,7 @@ export default function PicksForm({
                           : "border-border"
                       }`}
                     >
-                      {/* Player avatar */}
-                      {player.photo_url ? (
-                        <Image
-                          src={player.photo_url}
-                          alt={player.name}
-                          width={32}
-                          height={32}
-                          className="w-8 h-8 rounded-full object-cover shrink-0 bg-secondary"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0 text-xs font-bold text-muted-foreground">
-                          {player.name.charAt(0)}
-                        </div>
-                      )}
+                      <PlayerAvatar player={player} size={32} />
                       <span className="flex-1 text-sm font-medium text-foreground truncate">
                         {player.name}
                       </span>

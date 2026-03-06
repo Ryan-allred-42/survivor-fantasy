@@ -38,19 +38,28 @@ export async function markEpisodeComplete({ episodeId, eliminatedPlayerId }) {
     .eq("id", episodeId)
     .single();
 
-  // Count active players to determine placement
+  // Count total players and active players to determine placement
+  const { count: totalPlayerCount } = await supabase
+    .from("survivor_players")
+    .select("id", { count: "exact", head: true })
+    .eq("season", 50);
+
   const { count: activeCount } = await supabase
     .from("survivor_players")
     .select("id", { count: "exact", head: true })
     .eq("is_active", true)
     .eq("season", 50);
 
+  // placement 1 = first out, placement N = winner
+  // activeCount before elimination: 24 for first out → placement = 24 + 1 - 24 = 1
+  const placement = (totalPlayerCount ?? 24) + 1 - (activeCount ?? 1);
+
   await supabase
     .from("survivor_players")
     .update({
       is_active: false,
       eliminated_week: episode?.week_number,
-      placement: activeCount, // current active count = their placement rank
+      placement,
     })
     .eq("id", eliminatedPlayerId);
 

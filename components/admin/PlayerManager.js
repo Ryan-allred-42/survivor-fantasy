@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { updatePlayer, addPlayer } from "@/actions/admin";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import PlayerAvatar from "@/components/PlayerAvatar";
 
 export default function PlayerManager({ players: initialPlayers }) {
   const [players, setPlayers] = useState(initialPlayers);
@@ -162,19 +162,7 @@ function PlayerRow({ player, isActive, onToggle, onUpdateTribe, isEditing, onEdi
   return (
     <div className={`gradient-card border rounded-xl px-4 py-3 ${isActive ? "border-border" : "border-border/40 opacity-70"}`}>
       <div className="flex items-center gap-3">
-        {player.photo_url ? (
-          <Image
-            src={player.photo_url}
-            alt={player.name}
-            width={32}
-            height={32}
-            className="w-8 h-8 rounded-full object-cover shrink-0 bg-secondary"
-          />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
-            {player.name.charAt(0)}
-          </div>
-        )}
+        <PlayerAvatar player={player} size={32} />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-foreground text-sm">{player.name}</p>
           <p className="text-xs text-muted-foreground">

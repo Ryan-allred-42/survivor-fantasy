@@ -5,6 +5,7 @@ import Image from "next/image";
 import { submitPicks } from "@/actions/picks";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import PlayerAvatar from "@/components/PlayerAvatar";
 
 function checkIsLocked(lockTime) {
   if (!lockTime) return true;
@@ -127,13 +128,7 @@ function BootPickModal({ players, guess, setGuess, onClose }) {
                           : "border-white/10 text-muted-foreground hover:border-primary/30 hover:text-foreground"
                       }`}
                     >
-                      {p.photo_url ? (
-                        <Image src={p.photo_url} alt="" width={28} height={28} className="rounded-full object-cover shrink-0" style={{ width: 28, height: 28 }} />
-                      ) : (
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${ts.bg} ${ts.text}`}>
-                          {p.name.charAt(0)}
-                        </div>
-                      )}
+                      <PlayerAvatar player={p} size={28} />
                       <span className="text-xs font-medium truncate">{p.name}</span>
                     </button>
                   ))}
@@ -228,9 +223,14 @@ function BootGuessRow({ episodes, players, userPicksMap, currentEpisodeId, openE
                     <div className="flex-1">
                       {guess ? (
                         <>
-                          {players.find((p) => p.id === guess)?.photo_url && (
-                            <Image src={players.find((p) => p.id === guess).photo_url} alt="" width={32} height={32} className="rounded-full object-cover mx-auto mb-1" />
-                          )}
+                          {(() => {
+                            const guessPlayer = players.find((p) => p.id === guess);
+                            return guessPlayer ? (
+                              <div className="flex justify-center mb-1">
+                                <PlayerAvatar player={guessPlayer} size={32} />
+                              </div>
+                            ) : null;
+                          })()}
                           <p className="text-[10px] text-primary font-medium text-center leading-tight line-clamp-2">
                             {players.find((p) => p.id === guess)?.name}
                           </p>
@@ -241,8 +241,10 @@ function BootGuessRow({ episodes, players, userPicksMap, currentEpisodeId, openE
                     </div>
                   ) : hasPick ? (
                     <div className="flex-1">
-                      {guessedPlayer?.photo_url && (
-                        <Image src={guessedPlayer.photo_url} alt="" width={32} height={32} className="rounded-full object-cover mx-auto mb-1" />
+                      {guessedPlayer && (
+                        <div className="flex justify-center mb-1">
+                          <PlayerAvatar player={guessedPlayer} size={32} />
+                        </div>
                       )}
                       <p className={`text-[10px] font-medium text-center leading-tight line-clamp-2 ${
                         correct === true ? "text-emerald-400" : correct === false ? "text-destructive/70" : "text-muted-foreground"
@@ -320,9 +322,7 @@ function CompareModal({ episode, players, allMembersPicksMap, currentUserId, onC
 
         {eliminatedPlayer && (
           <div className="mx-5 mt-4 flex items-center gap-3 bg-destructive/10 border border-destructive/30 rounded-xl px-4 py-3 shrink-0">
-            {eliminatedPlayer.photo_url && (
-              <Image src={eliminatedPlayer.photo_url} alt={eliminatedPlayer.name} width={32} height={32} className="rounded-full object-cover shrink-0" />
-            )}
+            <PlayerAvatar player={eliminatedPlayer} size={32} />
             <div>
               <p className="text-xs text-destructive/80 uppercase tracking-wider font-bold">Voted Out</p>
               <p className="text-sm font-semibold text-foreground">{eliminatedPlayer.name}</p>
@@ -359,9 +359,7 @@ function CompareModal({ episode, players, allMembersPicksMap, currentUserId, onC
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold w-16 shrink-0">Boot Pick</span>
                   {guessedPlayer ? (
                     <div className="flex items-center gap-1.5">
-                      {guessedPlayer.photo_url && (
-                        <Image src={guessedPlayer.photo_url} alt="" width={20} height={20} className="rounded-full object-cover" />
-                      )}
+                      <PlayerAvatar player={guessedPlayer} size={20} />
                       <span className={`text-xs font-medium ${data.guessCorrect === true ? "text-emerald-400" : data.guessCorrect === false ? "text-destructive/70" : "text-foreground"}`}>
                         {guessedPlayer.name}
                       </span>
@@ -665,18 +663,7 @@ export default function WeeklyAllocationsTable({
                           style={{ background: "oklch(0.15 0.05 36)", boxShadow: "2px 0 8px -2px rgba(0,0,0,0.5)" }}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {player.photo_url ? (
-                              <Image
-                                src={player.photo_url} alt={player.name}
-                                width={28} height={28}
-                                className="rounded-full object-cover shrink-0"
-                                style={{ width: 28, height: 28 }}
-                              />
-                            ) : (
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${ts.bg} ${ts.text}`}>
-                                {player.name.charAt(0)}
-                              </div>
-                            )}
+                            <PlayerAvatar player={player} size={28} />
                             <span className={`text-xs font-medium truncate ${isEliminated ? "line-through text-muted-foreground" : "text-foreground"}`}>
                               {player.name}
                             </span>
