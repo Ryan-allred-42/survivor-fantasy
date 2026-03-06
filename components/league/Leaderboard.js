@@ -436,7 +436,9 @@ export default function Leaderboard({
   const [sortBy, setSortBy] = useState("points");
   const targetUser = compareUserId ? leaderboard.find((e) => e.userId === compareUserId) : null;
 
-  const sorted = [...leaderboard].sort((a, b) => {
+  const HIDDEN_USER_IDS = new Set(["5b809d3d-f386-4bd0-9c91-519bc2a99c37"]);
+
+  const sorted = [...leaderboard].filter((e) => !HIDDEN_USER_IDS.has(e.userId)).sort((a, b) => {
     if (sortBy === "max") {
       const maxDiff = (b.maxPotential ?? 0) - (a.maxPotential ?? 0);
       return maxDiff !== 0 ? maxDiff : b.cumulative - a.cumulative;
