@@ -250,14 +250,12 @@ export default async function LeaguePage({ params }) {
     memberPickStatusMap[uid] = !!(memberAllocationsMap[uid] && memberAllocationsMap[uid].length > 0);
   }
 
-  // Also gather all allocations for completed episodes to compute running totals per active player
-  // We need to know total points allocated to each active player across ALL weeks for a true max potential
+  // Gather allocations for completed (closed) episodes only to compute running totals per active player
   const allCompletedEpisodeIds = (episodes ?? []).filter((e) => e.is_complete).map((e) => e.id);
   let allTimeAllocsMap = {}; // { userId: { playerId: totalPoints } }
 
-  if (allCompletedEpisodeIds.length > 0 || currentEpisodeId) {
+  if (allCompletedEpisodeIds.length > 0) {
     const episodeIdsToFetch = [...allCompletedEpisodeIds];
-    if (currentEpisodeId) episodeIdsToFetch.push(currentEpisodeId);
 
     const { data: allPicks } = await adminSupabase
       .from("survivor_picks")
