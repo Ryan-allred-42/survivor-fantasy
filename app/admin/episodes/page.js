@@ -10,7 +10,7 @@ export default async function AdminEpisodesPage() {
   const [{ data: episodes }, { data: players }] = await Promise.all([
     supabase
       .from("survivor_episodes")
-      .select("*, survivor_players(id, name)")
+      .select("*, survivor_players(id, name), eliminated_player_ids")
       .eq("season", 50)
       .order("week_number", { ascending: true }),
     supabase

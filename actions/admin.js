@@ -23,68 +23,134 @@ async function requireAdmin() {
 }
 
 /**
- * Set the eliminated player for an episode and trigger scoring.
+ * Set the eliminated player(s) for an episode and trigger scoring.
+ * Accepts a single eliminatedPlayerId (legacy) or an array of eliminatedPlayerIds.
  */
-export async function markEpisodeComplete({ episodeId, eliminatedPlayerId }) {
+export async function markEpisodeComplete({ episodeId, eliminatedPlayerId, eliminatedPlayerIds }) {
   const auth = await requireAdmin();
   if (auth.error) return auth;
 
   const supabase = await createAdminClient();
 
-  // Update player: set is_active=false and record elimination
+  // Normalize to an array
+  const playerIds = eliminatedPlayerIds ?? (eliminatedPlayerId ? [eliminatedPlayerId] : []);
+  if (playerIds.length === 0) return { error: "No eliminated players specified" };
+
   const { data: episode } = await supabase
     .from("survivor_episodes")
     .select("week_number")
     .eq("id", episodeId)
     .single();
 
-  // Count total players and active players to determine placement
   const { count: totalPlayerCount } = await supabase
     .from("survivor_players")
     .select("id", { count: "exact", head: true })
     .eq("season", 50);
 
-  const { count: activeCount } = await supabase
-    .from("survivor_players")
-    .select("id", { count: "exact", head: true })
-    .eq("is_active", true)
-    .eq("season", 50);
+  // Process each eliminated player in order
+  let totalProcessed = 0;
+  for (const pid of playerIds) {
+    const { count: activeCount } = await supabase
+      .from("survivor_players")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true)
+      .eq("season", 50);
 
-  // placement 1 = first out, placement N = winner
-  // activeCount before elimination: 24 for first out → placement = 24 + 1 - 24 = 1
-  const placement = (totalPlayerCount ?? 24) + 1 - (activeCount ?? 1);
+    const placement = (totalPlayerCount ?? 24) + 1 - (activeCount ?? 1);
 
-  await supabase
-    .from("survivor_players")
-    .update({
-      is_active: false,
-      eliminated_week: episode?.week_number,
-      placement,
-    })
-    .eq("id", eliminatedPlayerId);
+    await supabase
+      .from("survivor_players")
+      .update({
+        is_active: false,
+        eliminated_week: episode?.week_number,
+        placement,
+      })
+      .eq("id", pid);
 
-  // Get remaining active count for totalPlayers
-  const { count: remainingAfter } = await supabase
-    .from("survivor_players")
-    .select("id", { count: "exact", head: true })
-    .eq("is_active", true)
-    .eq("season", 50);
+    const result = await resolveEpisode(episodeId, pid, playerIds);
+    if (!result.success) return { error: `Scoring engine failed for player ${pid}` };
+    totalProcessed += result.processed;
+  }
 
-  const totalPlayers = (remainingAfter ?? 0) + 1; // +1 for the one just eliminated
-
-  // Run scoring engine
-  const result = await resolveEpisode(episodeId, eliminatedPlayerId, totalPlayers);
-  if (!result.success) return { error: "Scoring engine failed" };
-
-  // Lock the episode
+  // Store all eliminated player IDs on the episode
   await supabase
     .from("survivor_episodes")
-    .update({ is_locked: true, eliminated_player_id: eliminatedPlayerId, is_complete: true })
+    .update({
+      is_locked: true,
+      eliminated_player_id: playerIds[0],
+      eliminated_player_ids: playerIds,
+      is_complete: true,
+    })
     .eq("id", episodeId);
 
   revalidatePath("/admin/episodes");
   revalidatePath("/admin");
-  return { success: true, processed: result.processed };
+  return { success: true, processed: totalProcessed };
+}
+
+/**
+ * Re-resolve a completed episode: reset guess_correct and bonus data,
+ * then re-run the scoring engine. Useful for fixing stale data after
+ * bug fixes without needing raw SQL migrations.
+ */
+export async function reResolveEpisode(episodeId) {
+  const auth = await requireAdmin();
+  if (auth.error) return auth;
+
+  const supabase = await createAdminClient();
+
+  const { data: episode } = await supabase
+    .from("survivor_episodes")
+    .select("*, eliminated_player_ids")
+    .eq("id", episodeId)
+    .single();
+
+  if (!episode) return { error: "Episode not found" };
+  if (!episode.is_complete) return { error: "Episode is not yet complete" };
+
+  const elimIds = episode.eliminated_player_ids?.length > 0
+    ? episode.eliminated_player_ids
+    : episode.eliminated_player_id ? [episode.eliminated_player_id] : [];
+
+  if (elimIds.length === 0) return { error: "No eliminated players recorded for this episode" };
+
+  // Find the next episode so we can reset bonus_points_available there
+  const { data: nextEpisode } = await supabase
+    .from("survivor_episodes")
+    .select("id")
+    .eq("season", episode.season)
+    .eq("week_number", episode.week_number + 1)
+    .maybeSingle();
+
+  // Reset guess_correct for all picks in this episode
+  await supabase
+    .from("survivor_picks")
+    .update({ guess_correct: null })
+    .eq("episode_id", episodeId);
+
+  // Reset bonus_points_available to base (10) on next-episode picks
+  if (nextEpisode) {
+    await supabase
+      .from("survivor_picks")
+      .update({ bonus_points_available: 10 })
+      .eq("episode_id", nextEpisode.id);
+  }
+
+  // Delete existing scores for this episode so resolveEpisode can recompute
+  await supabase
+    .from("survivor_scores")
+    .delete()
+    .eq("episode_id", episodeId);
+
+  // Re-run the scoring engine for each eliminated player
+  for (const pid of elimIds) {
+    const result = await resolveEpisode(episodeId, pid, elimIds);
+    if (!result.success) return { error: `Scoring engine failed for player ${pid}` };
+  }
+
+  revalidatePath("/admin/episodes");
+  revalidatePath("/admin");
+  return { success: true };
 }
 
 /**

@@ -293,9 +293,11 @@ function CompareModal({ episode, players, allMembersPicksMap, currentUserId, onC
     return 0;
   });
 
-  const eliminatedPlayer = episode.eliminated_player_id
-    ? players.find((p) => p.id === episode.eliminated_player_id)
-    : null;
+  const elimIds = episode.eliminated_player_ids?.length > 0
+    ? episode.eliminated_player_ids
+    : episode.eliminated_player_id ? [episode.eliminated_player_id] : [];
+  const eliminatedPlayers = elimIds.map((id) => players.find((p) => p.id === id)).filter(Boolean);
+  const eliminatedPlayer = eliminatedPlayers[0] ?? null;
 
   return (
     <div
@@ -673,7 +675,10 @@ export default function WeeklyAllocationsTable({
                         {episodes.map((ep) => {
                           const isCurrent = ep.id === currentEpisodeId;
                           const pastPts = userPicksMap[ep.id]?.allocations?.[player.id] || 0;
-                          const isEliminatedThisEp = ep.is_complete && ep.eliminated_player_id === player.id;
+                          const epElimIds = ep.eliminated_player_ids?.length > 0
+                            ? ep.eliminated_player_ids
+                            : ep.eliminated_player_id ? [ep.eliminated_player_id] : [];
+                          const isEliminatedThisEp = ep.is_complete && epElimIds.includes(player.id);
 
                           if (isCurrent && openEpisode && !isEliminated) {
                             return (

@@ -32,6 +32,14 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
   const myName = "You";
   const theirName = targetUser.displayName;
 
+  // Helper: get all eliminated players for an episode
+  function getEliminatedPlayers(ep) {
+    const ids = ep.eliminated_player_ids?.length > 0
+      ? ep.eliminated_player_ids
+      : ep.eliminated_player_id ? [ep.eliminated_player_id] : [];
+    return ids.map((id) => players.find((p) => p.id === id)).filter(Boolean);
+  }
+
   // Pre-compute per-episode and total scores
   const episodeData = [];
   let myTotal = 0;
@@ -40,18 +48,22 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
     const epPicks = allMembersPicksMap[ep.id] ?? {};
     const myPick = epPicks[currentUserId];
     const theirPick = epPicks[targetUser.userId];
-    const eliminatedPlayer = ep.eliminated_player_id
-      ? players.find((p) => p.id === ep.eliminated_player_id)
-      : null;
-    const placement = eliminatedPlayer?.placement ?? 0;
-    const multiplier = multipliers[placement] ?? 0;
-    const myPtsOnElim = eliminatedPlayer ? (myPick?.allocations?.[eliminatedPlayer.id] ?? 0) : 0;
-    const theirPtsOnElim = eliminatedPlayer ? (theirPick?.allocations?.[eliminatedPlayer.id] ?? 0) : 0;
-    const myEpScore = myPtsOnElim * multiplier;
-    const theirEpScore = theirPtsOnElim * multiplier;
+    const eliminatedPlayers = getEliminatedPlayers(ep);
+
+    // Per-eliminated-player scoring rows
+    const elimRows = eliminatedPlayers.map((elim) => {
+      const placement = elim.placement ?? 0;
+      const mult = multipliers[placement] ?? 0;
+      const myPts = myPick?.allocations?.[elim.id] ?? 0;
+      const theirPts = theirPick?.allocations?.[elim.id] ?? 0;
+      return { player: elim, placement, multiplier: mult, myPts, theirPts, myScore: myPts * mult, theirScore: theirPts * mult };
+    });
+
+    const myEpScore = elimRows.reduce((s, r) => s + r.myScore, 0);
+    const theirEpScore = elimRows.reduce((s, r) => s + r.theirScore, 0);
     myTotal += myEpScore;
     theirTotal += theirEpScore;
-    episodeData.push({ ep, myPick, theirPick, eliminatedPlayer, multiplier, myPtsOnElim, theirPtsOnElim, myEpScore, theirEpScore, myRunning: myTotal, theirRunning: theirTotal });
+    episodeData.push({ ep, myPick, theirPick, eliminatedPlayers, elimRows, myEpScore, theirEpScore, myRunning: myTotal, theirRunning: theirTotal });
   }
 
   const myLeading = myTotal > theirTotal;
@@ -149,43 +161,44 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
                   <span className="w-16 text-right">{theirName}</span>
                 </div>
                 <div className="divide-y divide-white/5">
-                  {episodeData.map(({ ep, eliminatedPlayer, multiplier, myPtsOnElim, theirPtsOnElim, myEpScore, theirEpScore }) => {
-                    if (!eliminatedPlayer) return null;
-                    const ts = tribeStyle(eliminatedPlayer.tribe);
-                    return (
-                      <div key={ep.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-1.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className={`text-[10px] font-medium truncate ${ts.text}`}>
-                            {eliminatedPlayer.name.split(" ")[0]}
+                  {episodeData.flatMap(({ ep, elimRows }) =>
+                    elimRows.map((row) => {
+                      const ts = tribeStyle(row.player.tribe);
+                      return (
+                        <div key={`${ep.id}-${row.player.id}`} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`text-[10px] font-medium truncate ${ts.text}`}>
+                              {row.player.name.split(" ")[0]}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground/30">Ep{ep.week_number}</span>
+                          </div>
+                          <span className="w-10 text-right text-[10px] text-muted-foreground/50 tabular-nums">
+                            {row.multiplier}×
                           </span>
-                          <span className="text-[9px] text-muted-foreground/30">Ep{ep.week_number}</span>
+                          <div className="w-16 text-right">
+                            {row.myPts > 0 ? (
+                              <span className="text-[10px] tabular-nums">
+                                <span className="text-muted-foreground/50">{row.myPts}×{row.multiplier}=</span>
+                                <span className="text-primary font-bold">{row.myScore}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground/20 tabular-nums">0</span>
+                            )}
+                          </div>
+                          <div className="w-16 text-right">
+                            {row.theirPts > 0 ? (
+                              <span className="text-[10px] tabular-nums">
+                                <span className="text-muted-foreground/50">{row.theirPts}×{row.multiplier}=</span>
+                                <span className="text-foreground font-bold">{row.theirScore}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground/20 tabular-nums">0</span>
+                            )}
+                          </div>
                         </div>
-                        <span className="w-10 text-right text-[10px] text-muted-foreground/50 tabular-nums">
-                          {multiplier}×
-                        </span>
-                        <div className="w-16 text-right">
-                          {myPtsOnElim > 0 ? (
-                            <span className="text-[10px] tabular-nums">
-                              <span className="text-muted-foreground/50">{myPtsOnElim}×{multiplier}=</span>
-                              <span className="text-primary font-bold">{myEpScore}</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground/20 tabular-nums">0</span>
-                          )}
-                        </div>
-                        <div className="w-16 text-right">
-                          {theirPtsOnElim > 0 ? (
-                            <span className="text-[10px] tabular-nums">
-                              <span className="text-muted-foreground/50">{theirPtsOnElim}×{multiplier}=</span>
-                              <span className="text-foreground font-bold">{theirEpScore}</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground/20 tabular-nums">0</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
                 {/* Totals row */}
                 <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-2 border-t border-white/10 bg-white/3">
@@ -255,11 +268,13 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
           {/* Episode accordion */}
           <div className="px-4 pt-2 pb-4 space-y-2">
             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider font-bold px-1 pt-1">Episode Breakdown</p>
-            {episodeData.map(({ ep, myPick, theirPick, eliminatedPlayer, multiplier, myPtsOnElim, theirPtsOnElim, myEpScore, theirEpScore, myRunning, theirRunning }) => {
+            {episodeData.map(({ ep, myPick, theirPick, eliminatedPlayers, elimRows, myEpScore, theirEpScore, myRunning, theirRunning }) => {
               const isExpanded = expandedEp === ep.id;
+              const elimIds = new Set(eliminatedPlayers.map((p) => p.id));
               const activeAtEpisode = players.filter(
                 (p) => p.is_active || (p.eliminated_week != null && p.eliminated_week >= ep.week_number)
               );
+              const elimNames = eliminatedPlayers.map((p) => p.name).join(", ");
 
               return (
                 <div key={ep.id} className="rounded-xl border border-white/10 overflow-hidden">
@@ -267,15 +282,15 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
                     onClick={() => setExpandedEp(isExpanded ? null : ep.id)}
                     className="w-full px-4 py-2.5 flex items-center justify-between bg-white/3 hover:bg-white/5 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-foreground">Ep {ep.week_number}</span>
-                      {eliminatedPlayer && (
-                        <span className="text-[10px] text-destructive/70">
-                          <span className="font-bold">Out:</span> {eliminatedPlayer.name} <span className="text-muted-foreground/50">({multiplier}×)</span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xs font-bold text-foreground shrink-0">Ep {ep.week_number}</span>
+                      {eliminatedPlayers.length > 0 && (
+                        <span className="text-[10px] text-destructive/70 truncate">
+                          <span className="font-bold">Out:</span> {elimNames}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 shrink-0">
                       <div className="flex items-center gap-4 text-[10px] tabular-nums">
                         <span className={myEpScore > theirEpScore ? "text-primary font-bold" : myEpScore > 0 ? "text-foreground" : "text-muted-foreground/40"}>
                           +{myEpScore}
@@ -290,30 +305,36 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
 
                   {isExpanded && (
                     <>
-                      <div className="px-4 py-2 border-t border-white/6 flex items-center justify-between bg-white/2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-primary font-bold uppercase">{myName}</span>
-                          {myPtsOnElim > 0 ? (
-                            <span className="text-[10px] tabular-nums">
-                              <span className="text-primary font-bold">+{myEpScore}</span>
-                              <span className="text-muted-foreground/50 ml-1">({myPtsOnElim} × {multiplier})</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground/40">+0</span>
-                          )}
-                          <span className="text-[10px] text-muted-foreground/40 tabular-nums">Total: {myRunning}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground/40 tabular-nums">Total: {theirRunning}</span>
-                          {theirPtsOnElim > 0 ? (
-                            <span className="text-[10px] tabular-nums">
-                              <span className="font-bold">+{theirEpScore}</span>
-                              <span className="text-muted-foreground/50 ml-1">({theirPtsOnElim} × {multiplier})</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground/40">+0</span>
-                          )}
-                          <span className="text-[10px] text-muted-foreground font-bold uppercase">{theirName}</span>
+                      {/* Per-elimination score breakdown */}
+                      <div className="px-4 py-2 border-t border-white/6 bg-white/2 space-y-1">
+                        {elimRows.map((row) => (
+                          <div key={row.player.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-destructive/60 font-medium">{row.player.name.split(" ")[0]}</span>
+                              <span className="text-[9px] text-muted-foreground/40">{row.multiplier}×</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <span className="text-[10px] tabular-nums">
+                                {row.myPts > 0
+                                  ? <><span className="text-primary font-bold">+{row.myScore}</span><span className="text-muted-foreground/50 ml-1">({row.myPts}×{row.multiplier})</span></>
+                                  : <span className="text-muted-foreground/30">+0</span>
+                                }
+                              </span>
+                              <span className="text-[10px] tabular-nums">
+                                {row.theirPts > 0
+                                  ? <><span className="font-bold">+{row.theirScore}</span><span className="text-muted-foreground/50 ml-1">({row.theirPts}×{row.multiplier})</span></>
+                                  : <span className="text-muted-foreground/30">+0</span>
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between pt-1 border-t border-white/6">
+                          <span className="text-[9px] text-muted-foreground/50 uppercase font-bold">Running Total</span>
+                          <div className="flex items-center gap-4">
+                            <span className="text-[10px] text-primary font-bold tabular-nums">{myRunning}</span>
+                            <span className="text-[10px] text-foreground font-bold tabular-nums">{theirRunning}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -323,6 +344,7 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
                           { label: theirName, pick: theirPick, isMe: false },
                         ].map(({ label, pick, isMe }) => {
                           const guessPlayer = pick?.guess ? players.find((p) => p.id === pick.guess) : null;
+                          const guessIsCorrect = guessPlayer && elimIds.has(guessPlayer.id);
                           return (
                             <div key={label} className="px-3 py-3 space-y-2">
                               <p className={`text-[10px] font-bold uppercase tracking-wider ${isMe ? "text-primary" : "text-muted-foreground"}`}>
@@ -334,12 +356,11 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
                                   <div className="flex items-center gap-1.5">
                                     <PlayerAvatar player={guessPlayer} size={18} />
                                     <span className={`text-[11px] font-medium ${
-                                      pick.guessCorrect === true ? "text-emerald-400" : pick.guessCorrect === false ? "text-destructive/70" : "text-foreground"
+                                      guessIsCorrect ? "text-emerald-400" : "text-destructive/70"
                                     }`}>
                                       {guessPlayer.name.split(" ")[0]}
                                     </span>
-                                    {pick.guessCorrect === true && <span className="text-emerald-400 text-[10px]">✓</span>}
-                                    {pick.guessCorrect === false && <span className="text-destructive text-[10px]">✗</span>}
+                                    {guessIsCorrect ? <span className="text-emerald-400 text-[10px]">✓</span> : <span className="text-destructive text-[10px]">✗</span>}
                                   </div>
                                 ) : (
                                   <span className="text-[11px] text-muted-foreground/40 italic">None</span>
@@ -351,7 +372,8 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
                                   {activeAtEpisode.map((player) => {
                                     const pts = pick?.allocations?.[player.id] ?? 0;
                                     const ts = tribeStyle(player.tribe);
-                                    const isOnEliminated = player.id === ep.eliminated_player_id;
+                                    const isOnEliminated = elimIds.has(player.id);
+                                    const elimRow = isOnEliminated ? elimRows.find((r) => r.player.id === player.id) : null;
                                     const hasPoints = pts > 0;
                                     return (
                                       <div key={player.id} className={`flex items-center justify-between gap-1 px-1.5 py-0.5 rounded ${
@@ -368,8 +390,8 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
                                           }`}>
                                             {pts}
                                           </span>
-                                          {isOnEliminated && hasPoints && (
-                                            <span className="text-[9px] text-primary/60 tabular-nums">={pts * multiplier}</span>
+                                          {isOnEliminated && hasPoints && elimRow && (
+                                            <span className="text-[9px] text-primary/60 tabular-nums">={pts * elimRow.multiplier}</span>
                                           )}
                                         </div>
                                       </div>
@@ -406,6 +428,9 @@ export default function Leaderboard({
   multipliers = [],
   allTimeAllocsMap = {},
   remainingMultipliers = [],
+  memberPickStatusMap = {},
+  currentEpisodeNumber = null,
+  isLocked = true,
 }) {
   const [compareUserId, setCompareUserId] = useState(null);
   const [sortBy, setSortBy] = useState("points");
@@ -464,6 +489,22 @@ export default function Leaderboard({
             </div>
           )}
         </div>
+        {/* Column headers */}
+        <div className="flex items-center gap-3 px-4 py-1.5 border-b border-border/40 bg-white/2">
+          <span className="w-5 shrink-0" />
+          <span className="flex-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">Player</span>
+          {currentEpisodeNumber && !isLocked && (
+            <span className="shrink-0 w-8 text-center text-[8px] font-bold uppercase tracking-wider text-muted-foreground/50 leading-tight">Ep {currentEpisodeNumber}<br />Picks?</span>
+          )}
+          <div className="shrink-0 flex items-center">
+            <span className="w-14 text-right text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">Pts</span>
+            {seasonStarted && showMaxPotential && (
+              <span className="w-14 text-right text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 pl-2">Max</span>
+            )}
+            <span className="w-4" />
+          </div>
+        </div>
+
         <div className="divide-y divide-border/30">
           {sorted.map((entry, idx) => {
             const isMe = entry.userId === currentUserId;
@@ -487,6 +528,20 @@ export default function Leaderboard({
                     {isMe && <span className="ml-1 text-primary font-normal">(you)</span>}
                   </p>
                 </div>
+                {currentEpisodeNumber && !isLocked && (
+                  <div className="shrink-0 w-8 flex justify-center">
+                    <span
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+                        memberPickStatusMap[entry.userId]
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : "bg-white/5 text-muted-foreground/30"
+                      }`}
+                      title={memberPickStatusMap[entry.userId] ? `Ep ${currentEpisodeNumber} picks submitted` : `Ep ${currentEpisodeNumber} picks not submitted`}
+                    >
+                      {memberPickStatusMap[entry.userId] ? "✓" : "—"}
+                    </span>
+                  </div>
+                )}
                 <div className="shrink-0 flex items-center">
                   {seasonStarted ? (
                     <>

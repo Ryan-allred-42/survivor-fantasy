@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
-import NavBar from "@/components/NavBar";
 import PicksForm from "@/components/picks/PicksForm";
 import { isEpisodeLocked } from "@/lib/utils";
 import Link from "next/link";
@@ -60,18 +59,15 @@ export default async function PicksPage({ params }) {
 
   if (!episode) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <NavBar />
-        <main className="flex-1 flex items-center justify-center px-6">
-          <div className="text-center">
-            <p className="text-4xl mb-4">🏆</p>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Season Complete</h1>
-            <p className="text-muted-foreground mb-6">There are no more episodes to pick for.</p>
-            <Link href={`/league/${leagueId}`}>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Back to League</Button>
-            </Link>
-          </div>
-        </main>
+      <div className="flex items-center justify-center py-24">
+        <div className="text-center">
+          <p className="text-4xl mb-4">🏆</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Season Complete</h1>
+          <p className="text-muted-foreground mb-6">There are no more episodes to pick for.</p>
+          <Link href={`/league/${leagueId}`}>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Back to League</Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -80,23 +76,20 @@ export default async function PicksPage({ params }) {
 
   if (locked) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <NavBar />
-        <main className="flex-1 flex items-center justify-center px-6">
-          <div className="text-center">
-            <p className="text-4xl mb-4">🔒</p>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Picks Are Locked</h1>
-            <p className="text-muted-foreground mb-2">
-              The deadline for Episode {episode.week_number} has passed.
-            </p>
-            <p className="text-sm text-muted-foreground mb-6">
-              Picks locked every Wednesday at 8:00 PM EST.
-            </p>
-            <Link href={`/league/${leagueId}`}>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Back to League</Button>
-            </Link>
-          </div>
-        </main>
+      <div className="flex items-center justify-center py-24">
+        <div className="text-center">
+          <p className="text-4xl mb-4">🔒</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Picks Are Locked</h1>
+          <p className="text-muted-foreground mb-2">
+            The deadline for Episode {episode.week_number} has passed.
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Picks locked every Wednesday at 8:00 PM EST.
+          </p>
+          <Link href={`/league/${leagueId}`}>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Back to League</Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -126,37 +119,34 @@ export default async function PicksPage({ params }) {
   }, {});
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <NavBar />
-      <main className="flex-1 px-4 py-8 md:px-10 max-w-4xl mx-auto w-full">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">
-            <Link href="/dashboard" className="hover:text-foreground">Dashboard</Link>
-            <span>/</span>
-            <Link href={`/league/${leagueId}`} className="hover:text-foreground">{league.name}</Link>
-            <span>/</span>
-            <span className="text-foreground">Picks</span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black text-foreground">
-            Episode {episode.week_number} Picks
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Allocate your {budget} points and guess who gets voted out.
-          </p>
+    <main className="flex-1 px-4 py-8 md:px-10 max-w-4xl mx-auto w-full">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">
+          <Link href="/dashboard" className="hover:text-foreground">Dashboard</Link>
+          <span>/</span>
+          <Link href={`/league/${leagueId}`} className="hover:text-foreground">{league.name}</Link>
+          <span>/</span>
+          <span className="text-foreground">Picks</span>
         </div>
+        <h1 className="text-2xl md:text-3xl font-black text-foreground">
+          Episode {episode.week_number} Picks
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Allocate your {budget} points and guess who gets voted out.
+        </p>
+      </div>
 
-        <PicksForm
-          leagueId={leagueId}
-          episodeId={episode.id}
-          episodeNumber={episode.week_number}
-          lockTime={episode.lock_time}
-          players={players ?? []}
-          budget={budget}
-          existingGuess={existingPick?.guessed_eliminated_player_id ?? null}
-          existingAllocations={existingAllocations}
-          mulliganUsed={member.mulligan_used}
-        />
-      </main>
-    </div>
+      <PicksForm
+        leagueId={leagueId}
+        episodeId={episode.id}
+        episodeNumber={episode.week_number}
+        lockTime={episode.lock_time}
+        players={players ?? []}
+        budget={budget}
+        existingGuess={existingPick?.guessed_eliminated_player_id ?? null}
+        existingAllocations={existingAllocations}
+        mulliganUsed={member.mulligan_used}
+      />
+    </main>
   );
 }

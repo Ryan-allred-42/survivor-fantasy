@@ -1,7 +1,6 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import NavBar from "@/components/NavBar";
 import { Badge } from "@/components/ui/badge";
 import { isEpisodeLocked, FULL_SEASON_MULTIPLIERS } from "@/lib/utils";
 import EpisodeCountdown from "@/components/league/EpisodeCountdown";
@@ -245,6 +244,12 @@ export default async function LeaguePage({ params }) {
     }
   }
 
+  // Build a map of userId → boolean for whether they've submitted picks this episode
+  const memberPickStatusMap = {};
+  for (const uid of memberUserIds) {
+    memberPickStatusMap[uid] = !!(memberAllocationsMap[uid] && memberAllocationsMap[uid].length > 0);
+  }
+
   // Also gather all allocations for completed episodes to compute running totals per active player
   // We need to know total points allocated to each active player across ALL weeks for a true max potential
   const allCompletedEpisodeIds = (episodes ?? []).filter((e) => e.is_complete).map((e) => e.id);
@@ -301,11 +306,8 @@ export default async function LeaguePage({ params }) {
   const completedEpisodes = (episodes ?? []).filter((e) => e.is_complete);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <NavBar />
-      <main className="flex-1 px-4 py-6 md:px-8 max-w-7xl mx-auto w-full">
-
-        {/* ── Header ──────────────────────────────────────── */}
+    <main className="flex-1 px-4 py-6 md:px-8 max-w-7xl mx-auto w-full">
+      {/* ── Header ──────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
@@ -335,10 +337,10 @@ export default async function LeaguePage({ params }) {
         <LeagueRulesCard joinCode={league.join_code} />
 
         {/* ── Main grid: picks + sidebar ───────────────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 xl:grid-cols-9 gap-5">
 
           {/* ── Picks (main content) ── */}
-          <div className="xl:col-span-3">
+          <div className="xl:col-span-6">
             <WeeklyAllocationsTable
               players={sortedPlayers}
               episodes={episodes ?? []}
@@ -352,7 +354,7 @@ export default async function LeaguePage({ params }) {
           </div>
 
           {/* ── Sidebar ── */}
-          <div className="xl:col-span-1 space-y-4">
+          <div className="xl:col-span-3 space-y-4">
             {/* Episode status */}
             {currentEpisode ? (
               <div
@@ -399,10 +401,12 @@ export default async function LeaguePage({ params }) {
               multipliers={FULL_SEASON_MULTIPLIERS}
               allTimeAllocsMap={allTimeAllocsMap}
               remainingMultipliers={remainingMultipliers}
+              memberPickStatusMap={memberPickStatusMap}
+              currentEpisodeNumber={currentEpisode?.week_number ?? null}
+              isLocked={isLocked}
             />
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }

@@ -66,15 +66,17 @@ WITH multiplier_table(placement, multiplier) AS (
     (13, 23), (14, 26), (15, 29), (16, 32), (17, 34), (18, 36),
     (19, 38), (20, 42), (21, 46), (22, 50), (23, 75), (24, 100)
 ),
--- For each completed episode, find the eliminated player and their placement
+-- For each completed episode, find the eliminated player(s) and their placement.
+-- Uses eliminated_player_ids array if it exists, otherwise falls back to single column.
 episode_elims AS (
   SELECT
     e.id AS episode_id,
     e.week_number,
-    e.eliminated_player_id,
+    p.id AS elim_id,
     p.placement
   FROM survivor_episodes e
-  JOIN survivor_players p ON p.id = e.eliminated_player_id
+  JOIN survivor_players p
+    ON p.id = e.eliminated_player_id
   WHERE e.season = 50
     AND e.is_complete = true
     AND e.eliminated_player_id IS NOT NULL
@@ -87,7 +89,7 @@ weekly_scores AS (
     pk.episode_id,
     ee.week_number,
     COALESCE(SUM(
-      CASE WHEN a.player_id = ee.eliminated_player_id
+      CASE WHEN a.player_id = ee.elim_id
            THEN a.points * COALESCE(mt.multiplier, ee.placement)
            ELSE 0
       END
@@ -123,6 +125,136 @@ SELECT
   now()
 FROM cumulative;
 
+-- ── 3. Fix guess_correct on all existing picks ──
+-- Reset ALL guess_correct values for completed episodes based on actual data.
+
+-- 3a. Mark correct guesses
+UPDATE survivor_picks pk
+SET guess_correct = true
+FROM survivor_episodes e
+WHERE pk.episode_id = e.id
+  AND e.season = 50
+  AND e.is_complete = true
+  AND e.eliminated_player_id IS NOT NULL
+  AND pk.guessed_eliminated_player_id = e.eliminated_player_id
+  AND pk.guess_correct IS DISTINCT FROM true;
+
+-- 3b. Mark incorrect guesses (guessed wrong player or didn't guess at all)
+UPDATE survivor_picks pk
+SET guess_correct = false
+FROM survivor_episodes e
+WHERE pk.episode_id = e.id
+  AND e.season = 50
+  AND e.is_complete = true
+  AND e.eliminated_player_id IS NOT NULL
+  AND (
+    pk.guessed_eliminated_player_id IS NULL
+    OR pk.guessed_eliminated_player_id != e.eliminated_player_id
+  )
+  AND pk.guess_correct IS DISTINCT FROM false;
+
+-- ── 4. Fix bonus_points_available for next-episode picks ──
+
+-- 4a. Reset incorrectly awarded bonus: if the previous episode guess was wrong,
+-- the next episode should have base budget (10), not 15.
+WITH wrong_guessers AS (
+  SELECT
+    pk.user_id,
+    pk.league_id,
+    e.week_number,
+    e.season
+  FROM survivor_picks pk
+  JOIN survivor_episodes e ON e.id = pk.episode_id
+  WHERE e.season = 50
+    AND e.is_complete = true
+    AND pk.guess_correct = false
+),
+next_ep AS (
+  SELECT
+    wg.user_id,
+    wg.league_id,
+    ne.id AS next_episode_id
+  FROM wrong_guessers wg
+  JOIN survivor_episodes ne
+    ON ne.season = wg.season
+   AND ne.week_number = wg.week_number + 1
+)
+UPDATE survivor_picks sp
+SET bonus_points_available = 10
+FROM next_ep ne
+WHERE sp.user_id = ne.user_id
+  AND sp.league_id = ne.league_id
+  AND sp.episode_id = ne.next_episode_id
+  AND sp.bonus_points_available = 15;
+
+-- 4b. Award correct bonus: if the previous episode guess was right,
+-- next episode should have 15 (10 base + 5 guess bonus).
+WITH correct_guessers AS (
+  SELECT
+    pk.user_id,
+    pk.league_id,
+    e.week_number,
+    e.season
+  FROM survivor_picks pk
+  JOIN survivor_episodes e ON e.id = pk.episode_id
+  WHERE e.season = 50
+    AND e.is_complete = true
+    AND pk.guess_correct = true
+),
+next_ep AS (
+  SELECT
+    cg.user_id,
+    cg.league_id,
+    ne.id AS next_episode_id
+  FROM correct_guessers cg
+  JOIN survivor_episodes ne
+    ON ne.season = cg.season
+   AND ne.week_number = cg.week_number + 1
+)
+UPDATE survivor_picks sp
+SET bonus_points_available = 15
+FROM next_ep ne
+WHERE sp.user_id = ne.user_id
+  AND sp.league_id = ne.league_id
+  AND sp.episode_id = ne.next_episode_id
+  AND (sp.bonus_points_available IS NULL OR sp.bonus_points_available = 10);
+
+-- Insert pick rows for correct guessers who don't yet have a row for the next episode
+WITH correct_guessers AS (
+  SELECT
+    pk.user_id,
+    pk.league_id,
+    e.week_number,
+    e.season
+  FROM survivor_picks pk
+  JOIN survivor_episodes e ON e.id = pk.episode_id
+  WHERE e.season = 50
+    AND e.is_complete = true
+    AND pk.guess_correct = true
+),
+next_ep AS (
+  SELECT
+    cg.user_id,
+    cg.league_id,
+    ne.id AS next_episode_id
+  FROM correct_guessers cg
+  JOIN survivor_episodes ne
+    ON ne.season = cg.season
+   AND ne.week_number = cg.week_number + 1
+),
+missing AS (
+  SELECT ne.user_id, ne.league_id, ne.next_episode_id
+  FROM next_ep ne
+  LEFT JOIN survivor_picks sp
+    ON sp.user_id = ne.user_id
+   AND sp.league_id = ne.league_id
+   AND sp.episode_id = ne.next_episode_id
+  WHERE sp.id IS NULL
+)
+INSERT INTO survivor_picks (user_id, league_id, episode_id, bonus_points_available, total_points_allocated)
+SELECT user_id, league_id, next_episode_id, 15, 0
+FROM missing;
+
 COMMIT;
 
 -- ── Verify ──
@@ -142,3 +274,18 @@ FROM survivor_scores ss
 JOIN survivor_profiles sp ON sp.id = ss.user_id
 JOIN survivor_episodes se ON se.id = ss.episode_id
 ORDER BY ss.league_id, sp.display_name, se.week_number;
+
+-- Verify guess_correct and bonus points
+SELECT
+  pk.user_id,
+  sp.display_name,
+  se.week_number,
+  pk.guess_correct,
+  pk.bonus_points_available,
+  pk.guessed_eliminated_player_id,
+  se.eliminated_player_id
+FROM survivor_picks pk
+JOIN survivor_profiles sp ON sp.id = pk.user_id
+JOIN survivor_episodes se ON se.id = pk.episode_id
+WHERE se.season = 50
+ORDER BY se.week_number, sp.display_name;
