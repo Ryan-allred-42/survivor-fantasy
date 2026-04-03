@@ -5,9 +5,10 @@ import { FULL_SEASON_MULTIPLIERS } from "@/lib/utils";
 
 const SCORING_DETAIL = [
   "Allocate up to your point budget each week across any active players.",
-  "When a player is eliminated, your points on them are multiplied by their boot-order multiplier (see table below).",
-  "24th place = 1×. The multiplier grows as players finish higher. 3rd = 50×, 2nd = 75×, winner = 100×.",
-  "Correct tribal guesses give +5 pts next week — picking the boot right matters more than ever.",
+  "When a player is voted out, your points on ALL SURVIVING players are multiplied by that week's boot-order multiplier.",
+  "Points on the eliminated player do NOT score — only players still in the game earn you points.",
+  "24th place = 1×. The multiplier grows as fewer players remain. 3rd = 50×, 2nd = 75×, winner = 100×.",
+  "Correct tribal guesses give +5 pts next week — the right read still pays off.",
 ];
 
 const GENERAL_RULES = [
@@ -43,7 +44,7 @@ export default function LeagueRulesCard({ joinCode }) {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-              Every elimination scores points. Points × a multiplier that grows steeply in the final five.
+              Surviving players earn points each vote-off — multiplier grows steeply in the final five.
             </p>
           </div>
         </div>
@@ -73,7 +74,7 @@ export default function LeagueRulesCard({ joinCode }) {
               🔥 Full Season Scoring
             </p>
             <p className="text-sm text-muted-foreground mb-3">
-              Every elimination scores points. Points × a multiplier that grows steeply in the final five.
+              Each vote-off, your points on surviving players earn you score. Multiplier grows steeply in the final five.
             </p>
             <ul className="space-y-2">
               {SCORING_DETAIL.map((rule, i) => (
@@ -92,7 +93,7 @@ export default function LeagueRulesCard({ joinCode }) {
               🔥 Boot Multiplier Table
             </p>
             <p className="text-xs text-muted-foreground mb-3">
-              Score = points you allocated to that player × multiplier shown below.
+              This week&apos;s multiplier is set by whoever gets voted out. Your points on all surviving players earn: points × multiplier.
             </p>
             <div className="overflow-x-auto rounded-xl border border-border/50">
               <table className="w-full text-xs border-collapse">
@@ -138,7 +139,7 @@ export default function LeagueRulesCard({ joinCode }) {
                 </tbody>
               </table>
               <p className="px-3 py-2 text-[10px] text-muted-foreground/60 border-t border-border/20">
-                ★ Top 5 &nbsp;·&nbsp; 🏆 Winner &nbsp;·&nbsp; Score = points you allocated × multiplier
+                ★ Top 5 &nbsp;·&nbsp; 🏆 Winner &nbsp;·&nbsp; Multiplier set by the boot — earned by surviving players
               </p>
             </div>
           </div>
