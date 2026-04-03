@@ -420,6 +420,8 @@ export default function WeeklyAllocationsTable({
   const [guess, setGuess] = useState(currentPick?.guess ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [compareEpisodeId, setCompareEpisodeId] = useState(null);
+  const [selectedAllUsersPlayerModal, setSelectedAllUsersPlayerModal] = useState(null);
+  const [globalAllocationsModal, setGlobalAllocationsModal] = useState(false);
   const [savedAt, setSavedAt] = useState(
     // Pre-populate if picks were already saved server-side
     currentPick && (currentPick.totalAllocated > 0 || currentPick.guess) ? "loaded" : null
@@ -566,9 +568,16 @@ export default function WeeklyAllocationsTable({
               active={openEpisode}
             />
 
-            {openEpisode && (
-              <div className="sm:ml-auto flex items-center gap-3 min-w-[160px]">
-                <div className="flex-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:ml-auto w-full sm:w-auto">
+              <button
+                onClick={() => setGlobalAllocationsModal(true)}
+                className="text-xs px-3 py-2 sm:py-1.5 rounded-lg border border-white/10 bg-white/5 text-foreground hover:bg-white/10 transition-colors font-medium flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <span>🌍</span> Global Allocations
+              </button>
+
+              {openEpisode && (
+                <div className="flex-1 min-w-[160px]">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-muted-foreground">Budget</span>
                     <span className="text-sm font-black text-gradient tabular-nums">
@@ -582,8 +591,8 @@ export default function WeeklyAllocationsTable({
                     />
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {openEpisode && !mulliganUsed && totalAllocated === 0 && (
@@ -666,9 +675,17 @@ export default function WeeklyAllocationsTable({
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <PlayerAvatar player={player} size={28} />
-                            <span className={`text-xs font-medium truncate ${isEliminated ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                              {player.name}
-                            </span>
+                            <div className="flex flex-col min-w-0">
+                              <span className={`text-xs font-medium truncate ${isEliminated ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                {player.name}
+                              </span>
+                              <button
+                                onClick={() => setSelectedAllUsersPlayerModal(player)}
+                                className="text-[9px] text-muted-foreground/50 hover:text-primary transition-colors text-left truncate mt-0.5"
+                              >
+                                See point comparison
+                              </button>
+                            </div>
                           </div>
                         </td>
 
@@ -795,6 +812,212 @@ export default function WeeklyAllocationsTable({
           onClose={() => setCompareEpisodeId(null)}
         />
       )}
+
+      {/* ── All Users Player Allocations Modal ──────────────── */}
+      {selectedAllUsersPlayerModal && (() => {
+        const lockedEpisodes = episodes.filter(ep => allMembersPicksMap[ep.id]);
+        let userAllocationsToPlayer = {};
+        const HIDDEN_USER_ID = "5b809d3d-f386-4bd0-9c91-519bc2a99c37";
+        
+        Object.entries(allMembersPicksMap).forEach(([epId, epPicks]) => {
+          Object.entries(epPicks).forEach(([uid, data]) => {
+            if (uid === HIDDEN_USER_ID) return;
+            if (!userAllocationsToPlayer[uid]) {
+              userAllocationsToPlayer[uid] = { displayName: data.displayName, total: 0, byEp: {} };
+            }
+            const pts = data.allocations?.[selectedAllUsersPlayerModal.id] || 0;
+            userAllocationsToPlayer[uid].byEp[epId] = pts;
+            userAllocationsToPlayer[uid].total += pts;
+          });
+        });
+
+        const sortedUsers = Object.values(userAllocationsToPlayer).sort((a, b) => b.total - a.total);
+
+        return (
+          <div
+            className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setSelectedAllUsersPlayerModal(null); }}
+          >
+            <div className="rounded-2xl border w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" style={WARM_CARD}>
+              <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <PlayerAvatar player={selectedAllUsersPlayerModal} size={32} />
+                  <div>
+                    <h2 className="font-bold text-foreground text-base">{selectedAllUsersPlayerModal.name}</h2>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">League-wide Point Allocations</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedAllUsersPlayerModal(null)} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors text-lg leading-none">✕</button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 p-4">
+                <div className="rounded-xl border border-white/10 overflow-hidden bg-white/5">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10 bg-white/5">
+                          <th className="px-4 py-3 text-left font-bold text-[10px] text-muted-foreground uppercase tracking-wider sticky left-0 z-10 bg-black/40 backdrop-blur-sm">Member</th>
+                          {lockedEpisodes.map(ep => (
+                            <th key={ep.id} className="px-2 py-3 text-center font-bold text-[10px] text-muted-foreground uppercase tracking-wider">Ep {ep.week_number}</th>
+                          ))}
+                          <th className="px-4 py-3 text-right font-bold text-[10px] text-primary uppercase tracking-wider">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {sortedUsers.map((u, i) => (
+                          <tr key={i} className="hover:bg-white/5 transition-colors">
+                            <td className="px-4 py-2 sticky left-0 z-10 bg-black/20 backdrop-blur-sm">
+                              <span className="text-xs font-medium text-foreground truncate max-w-[120px] block">{u.displayName}</span>
+                            </td>
+                            {lockedEpisodes.map(ep => {
+                              const pts = u.byEp[ep.id] || 0;
+                              return (
+                                <td key={ep.id} className="px-2 py-2 text-center">
+                                  {pts > 0 ? (
+                                    <span className="text-xs font-bold text-foreground tabular-nums">{pts}</span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground/30 tabular-nums">—</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                            <td className="px-4 py-2 text-right">
+                              <span className={`text-xs font-black tabular-nums ${u.total > 0 ? "text-primary" : "text-muted-foreground/30"}`}>{u.total > 0 ? u.total : "—"}</span>
+                            </td>
+                          </tr>
+                        ))}
+                        {sortedUsers.length === 0 && (
+                          <tr>
+                            <td colSpan={lockedEpisodes.length + 2} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                              No points have been allocated to {selectedAllUsersPlayerModal.name.split(" ")[0]} yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Global Allocations Modal ──────────────────────── */}
+      {globalAllocationsModal && (() => {
+        const lockedEpisodes = episodes.filter(ep => allMembersPicksMap[ep.id]);
+        const HIDDEN_USER_ID = "5b809d3d-f386-4bd0-9c91-519bc2a99c37";
+        
+        // Build user map and player totals
+        const userMap = {};
+        lockedEpisodes.forEach(ep => {
+          Object.entries(allMembersPicksMap[ep.id] || {}).forEach(([uid, data]) => {
+            if (uid === HIDDEN_USER_ID) return;
+            userMap[uid] = data.displayName;
+          });
+        });
+        const users = Object.entries(userMap).map(([uid, name]) => ({ uid, name })).sort((a, b) => a.name.localeCompare(b.name));
+
+        const playerTotals = {};
+        players.forEach(p => {
+          playerTotals[p.id] = { total: 0, byUser: {} };
+          users.forEach(u => {
+            playerTotals[p.id].byUser[u.uid] = 0;
+          });
+        });
+
+        lockedEpisodes.forEach(ep => {
+          Object.entries(allMembersPicksMap[ep.id] || {}).forEach(([uid, data]) => {
+            if (uid === HIDDEN_USER_ID) return;
+            Object.entries(data.allocations || {}).forEach(([pid, pts]) => {
+              if (playerTotals[pid] && playerTotals[pid].byUser[uid] !== undefined) {
+                 playerTotals[pid].byUser[uid] += pts;
+                 playerTotals[pid].total += pts;
+              }
+            });
+          });
+        });
+
+        // Sort players by total points allocated globally
+        const sortedPlayersByGlobalTotal = [...players].sort((a, b) => {
+          const ptsDiff = playerTotals[b.id].total - playerTotals[a.id].total;
+          if (ptsDiff !== 0) return ptsDiff;
+          return a.name.localeCompare(b.name);
+        });
+
+        return (
+          <div
+            className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setGlobalAllocationsModal(false); }}
+          >
+            <div className="rounded-2xl border w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" style={WARM_CARD}>
+              <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🌍</span>
+                  <div>
+                    <h2 className="font-bold text-foreground text-base">League-wide Allocations</h2>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Total points allocated to each player by all members across all closed episodes</p>
+                  </div>
+                </div>
+                <button onClick={() => setGlobalAllocationsModal(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors text-lg leading-none">✕</button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 p-4">
+                <div className="rounded-xl border border-white/10 overflow-hidden bg-white/5">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10 bg-white/5">
+                          <th className="px-4 py-3 text-left font-bold text-[10px] text-muted-foreground uppercase tracking-wider sticky left-0 z-10 bg-black/40 backdrop-blur-sm min-w-[140px]">Player</th>
+                          <th className="px-3 py-3 text-center font-bold text-[10px] text-primary uppercase tracking-wider bg-black/20 backdrop-blur-sm">Global Total</th>
+                          {users.map(u => (
+                            <th key={u.uid} className="px-2 py-3 text-center font-bold text-[10px] text-muted-foreground uppercase tracking-wider min-w-[80px] truncate max-w-[100px]" title={u.name}>{u.name}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {sortedPlayersByGlobalTotal.map((p) => {
+                          const pData = playerTotals[p.id];
+                          if (pData.total === 0) return null; // hide players with no allocations at all
+                          const isEliminated = !p.is_active;
+
+                          return (
+                            <tr key={p.id} className={`hover:bg-white/5 transition-colors ${isEliminated ? "opacity-60" : ""}`}>
+                              <td className="px-4 py-2 sticky left-0 z-10 bg-black/20 backdrop-blur-sm">
+                                <div className="flex items-center gap-2">
+                                  <PlayerAvatar player={p} size={24} />
+                                  <span className={`text-xs font-medium truncate ${isEliminated ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                    {p.name.split(" ")[0]}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-center bg-white/5">
+                                <span className={`text-xs font-black tabular-nums ${pData.total > 0 ? "text-primary" : "text-muted-foreground/30"}`}>{pData.total > 0 ? pData.total : "—"}</span>
+                              </td>
+                              {users.map(u => {
+                                const pts = pData.byUser[u.uid];
+                                return (
+                                  <td key={u.uid} className="px-2 py-2 text-center">
+                                    {pts > 0 ? (
+                                      <span className={`text-xs tabular-nums font-bold ${u.uid === currentUserId ? "text-primary" : "text-foreground"}`}>{pts}</span>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground/30 tabular-nums">—</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -29,6 +29,7 @@ function ChevronIcon({ expanded, className = "" }) {
 
 function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allMembersPicksMap, players, multipliers, allTimeAllocsMap, remainingMultipliers, onClose }) {
   const [expandedEp, setExpandedEp] = useState(null);
+  const [selectedPlayerModal, setSelectedPlayerModal] = useState(null);
   const myName = "You";
   const theirName = targetUser.displayName;
 
@@ -40,30 +41,56 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
     return ids.map((id) => players.find((p) => p.id === id)).filter(Boolean);
   }
 
-  // Pre-compute per-episode and total scores
+  // Pre-compute per-episode data just for the pick display (no running totals here!)
   const episodeData = [];
-  let myTotal = 0;
-  let theirTotal = 0;
   for (const ep of completedEpisodes) {
     const epPicks = allMembersPicksMap[ep.id] ?? {};
     const myPick = epPicks[currentUserId];
     const theirPick = epPicks[targetUser.userId];
     const eliminatedPlayers = getEliminatedPlayers(ep);
 
-    // Per-eliminated-player scoring rows
-    const elimRows = eliminatedPlayers.map((elim) => {
-      const placement = elim.placement ?? 0;
-      const mult = multipliers[placement] ?? 0;
-      const myPts = myPick?.allocations?.[elim.id] ?? 0;
-      const theirPts = theirPick?.allocations?.[elim.id] ?? 0;
-      return { player: elim, placement, multiplier: mult, myPts, theirPts, myScore: myPts * mult, theirScore: theirPts * mult };
-    });
+    // All players eliminated on or before this episode
+    const nonScoringIds = new Set(
+      players
+        .filter((p) => p.eliminated_week != null && p.eliminated_week <= ep.week_number)
+        .map((p) => p.id)
+    );
 
-    const myEpScore = elimRows.reduce((s, r) => s + r.myScore, 0);
-    const theirEpScore = elimRows.reduce((s, r) => s + r.theirScore, 0);
-    myTotal += myEpScore;
-    theirTotal += theirEpScore;
-    episodeData.push({ ep, myPick, theirPick, eliminatedPlayers, elimRows, myEpScore, theirEpScore, myRunning: myTotal, theirRunning: theirTotal });
+    episodeData.push({ ep, myPick, theirPick, eliminatedPlayers, nonScoringIds });
+  }
+
+  // Calculate accrued score for each player across the whole season
+  const elimCount = players.filter(p => !p.is_active).length;
+  const activeMult = multipliers[elimCount + 1] ?? multipliers[multipliers.length - 1];
+
+  const myAccruedScores = {};
+  const theirAccruedScores = {};
+  const myTotalAllocs = allTimeAllocsMap[currentUserId] ?? {};
+  const theirTotalAllocs = allTimeAllocsMap[targetUser.userId] ?? {};
+
+  for (const p of players) {
+    const mult = p.is_active ? activeMult : (multipliers[p.placement] ?? 0);
+    const myPts = myTotalAllocs[p.id] ?? 0;
+    const theirPts = theirTotalAllocs[p.id] ?? 0;
+    
+    myAccruedScores[p.id] = { pts: myPts, mult, score: myPts * mult };
+    theirAccruedScores[p.id] = { pts: theirPts, mult, score: theirPts * mult };
+  }
+
+  // Sort players by total score accrued
+  const sortedAccruedPlayers = [...players].sort((a, b) => {
+    const scoreB = Math.max(myAccruedScores[b.id].score, theirAccruedScores[b.id].score);
+    const scoreA = Math.max(myAccruedScores[a.id].score, theirAccruedScores[a.id].score);
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return a.name.localeCompare(b.name);
+  });
+
+  // Calculate myTotal and theirTotal based on THIS math!
+  let myTotal = 0;
+  let theirTotal = 0;
+  for (const p of players) {
+    myTotal += myAccruedScores[p.id].score;
+    theirTotal += theirAccruedScores[p.id].score;
   }
 
   const myLeading = myTotal > theirTotal;
@@ -72,8 +99,8 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
 
   // Total allocations across all episodes per active player (for the "all episodes" view)
   const activePlayers = players.filter((p) => p.is_active);
-  const myTotalAllocs = allTimeAllocsMap[currentUserId] ?? {};
-  const theirTotalAllocs = allTimeAllocsMap[targetUser.userId] ?? {};
+  const myTotalAllocs2 = allTimeAllocsMap[currentUserId] ?? {};
+  const theirTotalAllocs2 = allTimeAllocsMap[targetUser.userId] ?? {};
 
   // Compute max potential scenario for each user
   // Pair each user's per-player allocations with the best remaining multipliers
@@ -89,8 +116,8 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
     }
     return result;
   }
-  const myMaxScenario = computeMaxScenario(myTotalAllocs);
-  const theirMaxScenario = computeMaxScenario(theirTotalAllocs);
+  const myMaxScenario = computeMaxScenario(myTotalAllocs2);
+  const theirMaxScenario = computeMaxScenario(theirTotalAllocs2);
 
   let myMaxTotal = myTotal;
   let theirMaxTotal = theirTotal;
@@ -145,121 +172,65 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
             <p className="text-center text-sm text-muted-foreground py-8">No completed episodes yet.</p>
           )}
 
-          {/* Score breakdown — how each elimination contributed to the totals */}
-          {episodeData.length > 0 && (
+          {/* Score Accrued by Player */}
+          {players.length > 0 && (
             <div className="px-4 pt-4 pb-2">
               <div className="rounded-xl border border-white/10 overflow-hidden">
                 <div className="px-4 py-2.5 bg-white/3 border-b border-white/8">
-                  <p className="text-xs font-bold text-foreground">Score Breakdown</p>
-                  <p className="text-[9px] text-muted-foreground/60 mt-0.5">Points allocated to eliminated player × boot multiplier</p>
+                  <p className="text-xs font-bold text-foreground">Score Accrued by Player</p>
+                  <p className="text-[9px] text-muted-foreground/60 mt-0.5">Total score each player generated across the season</p>
                 </div>
-                {/* Column headers */}
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-4 py-1.5 border-b border-white/6 bg-white/2 text-[9px] text-muted-foreground/50 uppercase tracking-wider font-bold">
-                  <span>Eliminated</span>
-                  <span className="w-10 text-right">Boot</span>
+                <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-4 py-1.5 border-b border-white/6 bg-white/2 text-[9px] text-muted-foreground/50 uppercase tracking-wider font-bold">
+                  <span>Player</span>
                   <span className="w-16 text-right text-primary/50">{myName}</span>
                   <span className="w-16 text-right">{theirName}</span>
                 </div>
                 <div className="divide-y divide-white/5">
-                  {episodeData.flatMap(({ ep, elimRows }) =>
-                    elimRows.map((row) => {
-                      const ts = tribeStyle(row.player.tribe);
-                      return (
-                        <div key={`${ep.id}-${row.player.id}`} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-1.5">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className={`text-[10px] font-medium truncate ${ts.text}`}>
-                              {row.player.name.split(" ")[0]}
-                            </span>
-                            <span className="text-[9px] text-muted-foreground/30">Ep{ep.week_number}</span>
-                          </div>
-                          <span className="w-10 text-right text-[10px] text-muted-foreground/50 tabular-nums">
-                            {row.multiplier}×
+                  {sortedAccruedPlayers.map((player) => {
+                    const myData = myAccruedScores[player.id];
+                    const theirData = theirAccruedScores[player.id];
+                    if (myData.score === 0 && theirData.score === 0 && myData.pts === 0 && theirData.pts === 0) return null; // hide irrelevant players
+
+                    const ts = tribeStyle(player.tribe);
+                    const isEliminated = !player.is_active;
+
+                    return (
+                      <button key={player.id} onClick={() => setSelectedPlayerModal(player)} className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-4 py-2 w-full hover:bg-white/5 transition-colors text-left">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`text-[10px] font-medium truncate ${isEliminated ? "text-muted-foreground/40" : ts.text}`}>
+                            {player.name.split(" ")[0]}
                           </span>
-                          <div className="w-16 text-right">
-                            {row.myPts > 0 ? (
-                              <span className="text-[10px] tabular-nums">
-                                <span className="text-muted-foreground/50">{row.myPts}×{row.multiplier}=</span>
-                                <span className="text-primary font-bold">{row.myScore}</span>
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground/20 tabular-nums">0</span>
-                            )}
-                          </div>
-                          <div className="w-16 text-right">
-                            {row.theirPts > 0 ? (
-                              <span className="text-[10px] tabular-nums">
-                                <span className="text-muted-foreground/50">{row.theirPts}×{row.multiplier}=</span>
-                                <span className="text-foreground font-bold">{row.theirScore}</span>
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground/20 tabular-nums">0</span>
-                            )}
-                          </div>
+                          {isEliminated && <span className="text-[8px] text-muted-foreground/30 uppercase">Out</span>}
                         </div>
-                      );
-                    })
-                  )}
+                        <div className="w-16 text-right">
+                          {myData.pts > 0 ? (
+                            <span className="text-[10px] tabular-nums">
+                              <span className="text-muted-foreground/50">{myData.pts}×{myData.mult}=</span>
+                              <span className="text-primary font-bold">{myData.score}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground/20 tabular-nums">0</span>
+                          )}
+                        </div>
+                        <div className="w-16 text-right">
+                          {theirData.pts > 0 ? (
+                            <span className="text-[10px] tabular-nums">
+                              <span className="text-muted-foreground/50">{theirData.pts}×{theirData.mult}=</span>
+                              <span className="text-foreground font-bold">{theirData.score}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground/20 tabular-nums">0</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
                 {/* Totals row */}
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-2 border-t border-white/10 bg-white/3">
+                <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-4 py-2 border-t border-white/10 bg-white/3">
                   <span className="text-[10px] font-bold text-foreground uppercase">Total</span>
-                  <span className="w-10" />
                   <span className={`w-16 text-right text-xs font-black tabular-nums ${myLeading ? "text-emerald-400" : "text-primary"}`}>{myTotal}</span>
                   <span className={`w-16 text-right text-xs font-black tabular-nums ${theirLeading ? "text-emerald-400" : "text-foreground"}`}>{theirTotal}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Total allocations across all episodes — side by side for active players */}
-          {activePlayers.length > 0 && (
-            <div className="px-4 pt-2 pb-2">
-              <div className="rounded-xl border border-white/10 overflow-hidden">
-                <div className="px-4 py-2.5 bg-white/3 border-b border-white/8">
-                  <p className="text-xs font-bold text-foreground">Total Points on Active Players</p>
-                  <p className="text-[9px] text-muted-foreground/60 mt-0.5">Sum of all allocations across every episode</p>
-                </div>
-                <div className="grid grid-cols-2 divide-x divide-white/8">
-                  {[
-                    { label: myName, allocs: myTotalAllocs, maxScenario: myMaxScenario, isMe: true },
-                    { label: theirName, allocs: theirTotalAllocs, maxScenario: theirMaxScenario, isMe: false },
-                  ].map(({ label, allocs, maxScenario, isMe }) => (
-                    <div key={label} className="px-3 py-3">
-                      <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${isMe ? "text-primary" : "text-muted-foreground"}`}>
-                        {label}
-                      </p>
-                      <div className="space-y-0.5">
-                        {activePlayers.map((player) => {
-                          const pts = allocs[player.id] ?? 0;
-                          const ts = tribeStyle(player.tribe);
-                          const hasPoints = pts > 0;
-                          const scenario = maxScenario.get(player.id);
-                          return (
-                            <div key={player.id} className={`flex items-center justify-between gap-1 px-1.5 py-0.5 rounded ${hasPoints ? ts.bg : ""}`}>
-                              <span className={`text-[10px] truncate ${hasPoints ? ts.text : "text-muted-foreground/30"}`}>
-                                {player.name.split(" ")[0]}
-                              </span>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span className={`text-[10px] tabular-nums font-bold ${hasPoints ? "text-foreground" : "text-muted-foreground/20"}`}>
-                                  {pts}
-                                </span>
-                                {scenario && (
-                                  <span className="text-[9px] text-emerald-400/50 tabular-nums">
-                                    ×{scenario.mult}={scenario.score}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* Max potential total */}
-                      <div className="mt-2 pt-2 border-t border-white/8 flex items-center justify-between px-1.5">
-                        <span className="text-[9px] text-emerald-400/60 uppercase font-bold">Max Potential</span>
-                        <span className="text-[10px] text-emerald-400 font-bold tabular-nums">{isMe ? myMaxTotal : theirMaxTotal}</span>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
@@ -268,7 +239,7 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
           {/* Episode accordion */}
           <div className="px-4 pt-2 pb-4 space-y-2">
             <p className="text-[9px] text-muted-foreground/50 uppercase tracking-wider font-bold px-1 pt-1">Episode Breakdown</p>
-            {episodeData.map(({ ep, myPick, theirPick, eliminatedPlayers, elimRows, myEpScore, theirEpScore, myRunning, theirRunning }) => {
+            {episodeData.map(({ ep, myPick, theirPick, eliminatedPlayers, nonScoringIds }) => {
               const isExpanded = expandedEp === ep.id;
               const elimIds = new Set(eliminatedPlayers.map((p) => p.id));
               const activeAtEpisode = players.filter(
@@ -291,53 +262,12 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
                       )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <div className="flex items-center gap-4 text-[10px] tabular-nums">
-                        <span className={myEpScore > theirEpScore ? "text-primary font-bold" : myEpScore > 0 ? "text-foreground" : "text-muted-foreground/40"}>
-                          +{myEpScore}
-                        </span>
-                        <span className={theirEpScore > myEpScore ? "text-foreground font-bold" : theirEpScore > 0 ? "text-foreground" : "text-muted-foreground/40"}>
-                          +{theirEpScore}
-                        </span>
-                      </div>
                       <ChevronIcon expanded={isExpanded} className="text-muted-foreground/40" />
                     </div>
                   </button>
 
                   {isExpanded && (
                     <>
-                      {/* Per-elimination score breakdown */}
-                      <div className="px-4 py-2 border-t border-white/6 bg-white/2 space-y-1">
-                        {elimRows.map((row) => (
-                          <div key={row.player.id} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-destructive/60 font-medium">{row.player.name.split(" ")[0]}</span>
-                              <span className="text-[9px] text-muted-foreground/40">{row.multiplier}×</span>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <span className="text-[10px] tabular-nums">
-                                {row.myPts > 0
-                                  ? <><span className="text-primary font-bold">+{row.myScore}</span><span className="text-muted-foreground/50 ml-1">({row.myPts}×{row.multiplier})</span></>
-                                  : <span className="text-muted-foreground/30">+0</span>
-                                }
-                              </span>
-                              <span className="text-[10px] tabular-nums">
-                                {row.theirPts > 0
-                                  ? <><span className="font-bold">+{row.theirScore}</span><span className="text-muted-foreground/50 ml-1">({row.theirPts}×{row.multiplier})</span></>
-                                  : <span className="text-muted-foreground/30">+0</span>
-                                }
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                        <div className="flex items-center justify-between pt-1 border-t border-white/6">
-                          <span className="text-[9px] text-muted-foreground/50 uppercase font-bold">Running Total</span>
-                          <div className="flex items-center gap-4">
-                            <span className="text-[10px] text-primary font-bold tabular-nums">{myRunning}</span>
-                            <span className="text-[10px] text-foreground font-bold tabular-nums">{theirRunning}</span>
-                          </div>
-                        </div>
-                      </div>
-
                       <div className="grid grid-cols-2 divide-x divide-white/8 border-t border-white/6">
                         {[
                           { label: myName, pick: myPick, isMe: true },
@@ -372,26 +302,25 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
                                   {activeAtEpisode.map((player) => {
                                     const pts = pick?.allocations?.[player.id] ?? 0;
                                     const ts = tribeStyle(player.tribe);
-                                    const isOnEliminated = elimIds.has(player.id);
-                                    const elimRow = isOnEliminated ? elimRows.find((r) => r.player.id === player.id) : null;
+                                    const isNonScoring = nonScoringIds.has(player.id);
                                     const hasPoints = pts > 0;
                                     return (
                                       <div key={player.id} className={`flex items-center justify-between gap-1 px-1.5 py-0.5 rounded ${
-                                        isOnEliminated ? "bg-primary/10 ring-1 ring-primary/20" : hasPoints ? ts.bg : ""
+                                        isNonScoring && hasPoints ? "bg-destructive/10 ring-1 ring-destructive/20" : hasPoints ? ts.bg : ""
                                       }`}>
                                         <span className={`text-[10px] truncate ${
-                                          isOnEliminated ? "text-primary font-semibold" : hasPoints ? ts.text : "text-muted-foreground/30"
+                                          isNonScoring ? "text-destructive/70 line-through" : hasPoints ? ts.text : "text-muted-foreground/30"
                                         }`}>
                                           {player.name.split(" ")[0]}
                                         </span>
                                         <div className="flex items-center gap-1 shrink-0">
                                           <span className={`text-[10px] tabular-nums font-bold ${
-                                            isOnEliminated && hasPoints ? "text-primary" : hasPoints ? "text-foreground" : "text-muted-foreground/20"
+                                            isNonScoring && hasPoints ? "text-destructive/70 line-through" : hasPoints ? "text-foreground" : "text-muted-foreground/20"
                                           }`}>
                                             {pts}
                                           </span>
-                                          {isOnEliminated && hasPoints && elimRow && (
-                                            <span className="text-[9px] text-primary/60 tabular-nums">={pts * elimRow.multiplier}</span>
+                                          {!isNonScoring && hasPoints && (
+                                            <span className="text-[9px] text-emerald-400/60 tabular-nums font-bold">✓</span>
                                           )}
                                         </div>
                                       </div>
@@ -412,6 +341,55 @@ function ComparePlayerModal({ currentUserId, targetUser, completedEpisodes, allM
           </div>
         </div>
       </div>
+
+      {/* Selected Player Point Allocations Overlay */}
+      {selectedPlayerModal && (
+        <div className="absolute inset-0 z-[60] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPlayerModal(null); }}>
+          <div className="rounded-xl border w-full max-w-sm border-white/10 shadow-2xl overflow-hidden" style={WARM_CARD}>
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <PlayerAvatar player={selectedPlayerModal} size={32} />
+                <div>
+                  <h3 className="font-bold text-foreground text-sm">{selectedPlayerModal.name}</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Point Allocations</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedPlayerModal(null)} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">✕</button>
+            </div>
+            <div className="p-4 bg-white/5">
+              <div className="grid grid-cols-[1fr_auto_auto] gap-4 mb-2 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                <span>Episode</span>
+                <span className="w-12 text-right text-primary/80">{myName}</span>
+                <span className="w-12 text-right">{theirName}</span>
+              </div>
+              <div className="space-y-1">
+                {completedEpisodes.map(ep => {
+                  const epPicks = allMembersPicksMap[ep.id] ?? {};
+                  const myAlloc = epPicks[currentUserId]?.allocations?.[selectedPlayerModal.id] ?? 0;
+                  const theirAlloc = epPicks[targetUser.userId]?.allocations?.[selectedPlayerModal.id] ?? 0;
+                  
+                  if (myAlloc === 0 && theirAlloc === 0 && (selectedPlayerModal.eliminated_week != null && selectedPlayerModal.eliminated_week < ep.week_number)) {
+                      return null;
+                  }
+
+                  return (
+                    <div key={ep.id} className="grid grid-cols-[1fr_auto_auto] gap-4 py-2 px-2 rounded-lg bg-black/20 border border-white/5 items-center">
+                      <span className="text-xs font-medium">Ep {ep.week_number}</span>
+                      <span className={`w-12 text-right text-xs tabular-nums ${myAlloc > 0 ? "text-primary font-bold" : "text-muted-foreground/30"}`}>{myAlloc || "-"}</span>
+                      <span className={`w-12 text-right text-xs tabular-nums ${theirAlloc > 0 ? "text-foreground font-bold" : "text-muted-foreground/30"}`}>{theirAlloc || "-"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-4 mt-3 pt-3 border-t border-white/10 px-2 items-center">
+                <span className="text-[10px] font-bold uppercase text-foreground tracking-wider">Total Allocated</span>
+                <span className="w-12 text-right text-sm font-black tabular-nums text-primary">{myAccruedScores[selectedPlayerModal.id]?.pts || 0}</span>
+                <span className="w-12 text-right text-sm font-black tabular-nums text-foreground">{theirAccruedScores[selectedPlayerModal.id]?.pts || 0}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

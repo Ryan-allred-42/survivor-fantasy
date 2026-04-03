@@ -277,11 +277,8 @@ export default async function LeaguePage({ params }) {
       if (!allTimeAllocsMap[pick.user_id]) allTimeAllocsMap[pick.user_id] = {};
       const pickAllocs = allAllocs.filter((a) => a.pick_id === pick.id);
       for (const a of pickAllocs) {
-        // Only count allocations to still-active players for max potential
-        if (activePlayers.some((p) => p.id === a.player_id)) {
-          allTimeAllocsMap[pick.user_id][a.player_id] =
-            (allTimeAllocsMap[pick.user_id][a.player_id] ?? 0) + a.points;
-        }
+        allTimeAllocsMap[pick.user_id][a.player_id] =
+          (allTimeAllocsMap[pick.user_id][a.player_id] ?? 0) + a.points;
       }
     }
   }
@@ -289,7 +286,13 @@ export default async function LeaguePage({ params }) {
   // Compute max potential for each leaderboard entry
   for (const entry of leaderboard) {
     const playerPoints = allTimeAllocsMap[entry.userId] ?? {};
-    const sortedPoints = Object.values(playerPoints).sort((a, b) => b - a);
+    
+    // Only allocations on currently ACTIVE players can earn future points!
+    const activePts = [];
+    for (const p of activePlayers) {
+       if (playerPoints[p.id]) activePts.push(playerPoints[p.id]);
+    }
+    const sortedPoints = activePts.sort((a, b) => b - a);
 
     // Pair highest allocation with highest remaining multiplier
     let maxFromActive = 0;
