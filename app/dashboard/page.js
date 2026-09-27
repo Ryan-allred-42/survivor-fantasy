@@ -72,7 +72,7 @@ export default async function DashboardPage() {
           <h1 className="text-3xl md:text-4xl font-black text-foreground mb-1">
             Your <span className="text-gradient">Leagues</span>
           </h1>
-          <p className="text-muted-foreground text-sm">Survivor Season 50 · Fantasy</p>
+          <p className="text-muted-foreground text-sm">Survivor Season 51 · Fantasy</p>
         </div>
 
         {/* ── 1. Active leagues ──────────────────────────── */}

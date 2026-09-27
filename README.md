@@ -1,6 +1,6 @@
-# Survivor Fantasy — Season 50
+# Survivor Fantasy — Season 51
 
-A full-stack Survivor Season 50 fantasy league app built with Next.js 16, Tailwind CSS, ShadCN, and Supabase.
+A full-stack Survivor Season 51 fantasy league app built with Next.js 16, Tailwind CSS, ShadCN, and Supabase.
 
 ---
 
@@ -51,12 +51,15 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Adding the Season 50 Cast
+## Adding a New Season's Cast
 
 Once the cast is announced, update the players either:
 
 - **Via Admin Portal** → `/admin/players` → "Add Player" button
-- **Via SQL** → Update `supabase/seed.sql` with real names/tribes and run it
+- **Via SQL** → Add a `supabase/seed_seasonXX.sql` modeled on `supabase/seed_season51.sql` and run it
+
+Then bump `CURRENT_SEASON` in `lib/season.js` so the app treats the new season as current.
+Historical seasons keep their data untouched.
 
 ---
 

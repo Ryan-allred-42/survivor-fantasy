@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import PlayerManager from "@/components/admin/PlayerManager";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export const metadata = { title: "Players — Admin" };
 
@@ -9,14 +10,14 @@ export default async function AdminPlayersPage() {
   const { data: players } = await supabase
     .from("survivor_players")
     .select("*")
-    .eq("season", 50)
+    .eq("season", CURRENT_SEASON)
     .order("placement", { ascending: false, nullsFirst: false });
 
   return (
     <div className="max-w-4xl">
       <h1 className="text-2xl font-black text-foreground mb-2">Player Management</h1>
       <p className="text-muted-foreground text-sm mb-8">
-        Manage the Season 50 cast. Add players, update their info, or mark them inactive.
+        Manage the Season 51 cast. Add players, update their info, or mark them inactive.
       </p>
       <PlayerManager players={players ?? []} />
     </div>

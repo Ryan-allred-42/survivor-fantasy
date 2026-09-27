@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import LeagueManager from "@/components/admin/LeagueManager";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export const metadata = { title: "Leagues — Admin" };
 
@@ -9,7 +10,7 @@ export default async function AdminLeaguesPage() {
   const { data: leagues } = await supabase
     .from("survivor_leagues")
     .select("*")
-    .eq("season", 50)
+    .eq("season", CURRENT_SEASON)
     .order("created_at", { ascending: false });
 
   const ownerIds = [...new Set((leagues ?? []).map((l) => l.owner_id))];

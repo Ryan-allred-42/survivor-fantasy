@@ -8,11 +8,11 @@ const geistSans = GeistSans;
 const geistMono = GeistMono;
 
 export const metadata = {
-  title: "Survivor Fantasy — Season 50",
-  description: "Play Survivor Season 50 fantasy with your friends. Pick who gets voted out, allocate points, climb the leaderboard.",
+  title: "Survivor Fantasy — Season 51",
+  description: "Play Survivor Season 51 fantasy with your friends. Pick who gets voted out, allocate points, climb the leaderboard.",
   openGraph: {
-    title: "Survivor Fantasy — Season 50",
-    description: "The ultimate Survivor Season 50 fantasy league experience.",
+    title: "Survivor Fantasy — Season 51",
+    description: "The ultimate Survivor Season 51 fantasy league experience.",
     type: "website",
   },
 };

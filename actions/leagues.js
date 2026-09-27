@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { generateJoinCode } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
+import { CURRENT_SEASON } from "@/lib/season";
 
 /**
  * Create a new league for the authenticated user.
@@ -37,7 +38,7 @@ export async function createLeague(formData) {
 
   const { data: league, error } = await supabase
     .from("survivor_leagues")
-    .insert({ name, owner_id: user.id, scoring_method: "full_season", join_code: joinCode, season: 50 })
+    .insert({ name, owner_id: user.id, scoring_method: "full_season", join_code: joinCode, season: CURRENT_SEASON })
     .select()
     .single();
 

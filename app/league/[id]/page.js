@@ -7,6 +7,7 @@ import EpisodeCountdown from "@/components/league/EpisodeCountdown";
 import WeeklyAllocationsTable from "@/components/picks/WeeklyAllocationsTable";
 import LeagueRulesCard from "@/components/league/LeagueRulesCard";
 import Leaderboard from "@/components/league/Leaderboard";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -53,7 +54,7 @@ export default async function LeaguePage({ params }) {
   const { data: episodes } = await supabase
     .from("survivor_episodes")
     .select("*")
-    .eq("season", 50)
+    .eq("season", CURRENT_SEASON)
     .order("week_number", { ascending: true });
 
   // Current episode: earliest incomplete
@@ -65,10 +66,10 @@ export default async function LeaguePage({ params }) {
   const { data: players } = await supabase
     .from("survivor_players")
     .select("id, name, tribe, photo_url, is_active, eliminated_week, placement")
-    .eq("season", 50)
+    .eq("season", CURRENT_SEASON)
     .order("name");
 
-  const TRIBE_ORDER = ["Cila", "Kalo", "Vatu"];
+  const TRIBE_ORDER = ["Toka", "Savu"];
   const sortedPlayers = [...(players ?? [])].sort((a, b) => {
     const ti = TRIBE_ORDER.indexOf(a.tribe ?? "") - TRIBE_ORDER.indexOf(b.tribe ?? "");
     if (ti !== 0) return ti;

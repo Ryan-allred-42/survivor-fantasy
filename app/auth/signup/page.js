@@ -15,14 +15,14 @@ export default function SignUpPage() {
           <Link href="/" className="inline-block">
             <span className="text-2xl font-black tracking-tight text-gradient">SURVIVOR</span>
             <span className="block text-xs tracking-[0.3em] text-muted-foreground uppercase mt-1">
-              Fantasy Season 50
+              Fantasy Season 51
             </span>
           </Link>
         </div>
 
         <div className="gradient-card border border-border rounded-2xl p-8 shadow-2xl">
           <h1 className="text-2xl font-bold text-foreground mb-2">Create your account</h1>
-          <p className="text-muted-foreground text-sm mb-8">Join the Season 50 fantasy experience</p>
+          <p className="text-muted-foreground text-sm mb-8">Join the Season 51 fantasy experience</p>
 
           <FormAuthError action={signUp}>
             <div className="space-y-5">

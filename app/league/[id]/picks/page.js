@@ -4,6 +4,7 @@ import PicksForm from "@/components/picks/PicksForm";
 import { isEpisodeLocked } from "@/lib/utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export const metadata = { title: "Submit Picks — Survivor Fantasy" };
 
@@ -51,7 +52,7 @@ export default async function PicksPage({ params }) {
   const { data: episode } = await supabase
     .from("survivor_episodes")
     .select("*")
-    .eq("season", 50)
+    .eq("season", CURRENT_SEASON)
     .eq("is_complete", false)
     .order("week_number", { ascending: true })
     .limit(1)
@@ -98,7 +99,7 @@ export default async function PicksPage({ params }) {
   const { data: players } = await supabase
     .from("survivor_players")
     .select("id, name, tribe, photo_url")
-    .eq("season", 50)
+    .eq("season", CURRENT_SEASON)
     .eq("is_active", true)
     .order("name");
 

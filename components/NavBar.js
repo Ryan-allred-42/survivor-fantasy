@@ -26,8 +26,8 @@ export default async function NavBar() {
     <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 md:px-10 border-b border-border/60 bg-background/80 backdrop-blur-md">
       <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2.5">
         <Image
-          src="/survivor-s50-logo.png"
-          alt="Survivor Season 50"
+          src="/survivor-s51-logo.png"
+          alt="Survivor Season 51"
           width={88}
           height={55}
           className="object-contain drop-shadow-[0_1px_4px_rgba(251,146,60,0.35)]"

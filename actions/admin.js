@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { resolveEpisode } from "@/lib/scoring";
 import { revalidatePath } from "next/cache";
+import { CURRENT_SEASON } from "@/lib/season";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -45,7 +46,7 @@ export async function markEpisodeComplete({ episodeId, eliminatedPlayerId, elimi
   const { count: totalPlayerCount } = await supabase
     .from("survivor_players")
     .select("id", { count: "exact", head: true })
-    .eq("season", 50);
+    .eq("season", CURRENT_SEASON);
 
   // Process each eliminated player in order
   let totalProcessed = 0;
@@ -54,7 +55,7 @@ export async function markEpisodeComplete({ episodeId, eliminatedPlayerId, elimi
       .from("survivor_players")
       .select("id", { count: "exact", head: true })
       .eq("is_active", true)
-      .eq("season", 50);
+      .eq("season", CURRENT_SEASON);
 
     const placement = (totalPlayerCount ?? 24) + 1 - (activeCount ?? 1);
 
@@ -164,7 +165,7 @@ export async function createEpisode({ weekNumber, airDate, lockTime }) {
 
   const { data, error } = await supabase
     .from("survivor_episodes")
-    .insert({ season: 50, week_number: weekNumber, air_date: airDate, lock_time: lockTime })
+    .insert({ season: CURRENT_SEASON, week_number: weekNumber, air_date: airDate, lock_time: lockTime })
     .select()
     .single();
 
@@ -207,7 +208,7 @@ export async function addPlayer(playerData) {
 
   const { data, error } = await supabase
     .from("survivor_players")
-    .insert({ ...playerData, season: 50 })
+    .insert({ ...playerData, season: CURRENT_SEASON })
     .select()
     .single();
 
@@ -228,7 +229,7 @@ export async function getAdminLeagues() {
   const { data: leagues, error } = await supabase
     .from("survivor_leagues")
     .select("*")
-    .eq("season", 50)
+    .eq("season", CURRENT_SEASON)
     .order("created_at", { ascending: false });
 
   if (error) return { error: error.message };

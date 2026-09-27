@@ -1,6 +1,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export default async function AdminOverviewPage() {
   const supabase = await createClient();
@@ -15,20 +16,20 @@ export default async function AdminOverviewPage() {
     { data: recentLeagues },
     { count: userCount },
   ] = await Promise.all([
-    supabase.from("survivor_players").select("id", { count: "exact", head: true }).eq("season", 50),
-    supabase.from("survivor_episodes").select("id", { count: "exact", head: true }).eq("season", 50),
-    supabase.from("survivor_leagues").select("id", { count: "exact", head: true }).eq("season", 50),
+    supabase.from("survivor_players").select("id", { count: "exact", head: true }).eq("season", CURRENT_SEASON),
+    supabase.from("survivor_episodes").select("id", { count: "exact", head: true }).eq("season", CURRENT_SEASON),
+    supabase.from("survivor_leagues").select("id", { count: "exact", head: true }).eq("season", CURRENT_SEASON),
     supabase.from("survivor_league_members").select("id", { count: "exact", head: true }),
     supabase
       .from("survivor_episodes")
       .select("id, week_number, is_complete, is_locked, survivor_players(name)")
-      .eq("season", 50)
+      .eq("season", CURRENT_SEASON)
       .order("week_number", { ascending: true })
       .limit(5),
     supabase
       .from("survivor_leagues")
       .select("id, name, join_code, owner_id, created_at")
-      .eq("season", 50)
+      .eq("season", CURRENT_SEASON)
       .order("created_at", { ascending: false })
       .limit(5),
     adminSupabase.from("survivor_profiles").select("id", { count: "exact", head: true }),

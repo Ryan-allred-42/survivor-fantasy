@@ -10,8 +10,8 @@ export default function LandingPage() {
       <nav className="flex items-center justify-between px-6 py-4 md:px-12 border-b border-border/40">
         <div className="flex items-center gap-2">
           <Image
-            src="/survivor-s50-logo.png"
-            alt="Survivor Season 50"
+            src="/survivor-s51-logo.png"
+            alt="Survivor Season 51"
             width={80}
             height={50}
             className="object-contain drop-shadow-[0_1px_6px_rgba(251,146,60,0.35)]"
@@ -34,8 +34,8 @@ export default function LandingPage() {
       <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-24 md:py-32">
         <div className="mb-8 drop-shadow-[0_2px_20px_rgba(251,146,60,0.30)]">
           <Image
-            src="/survivor-s50-logo.png"
-            alt="Survivor: In the Hands of the Fans — Season 50"
+            src="/survivor-s51-logo.png"
+            alt="Survivor — Season 51"
             width={340}
             height={211}
             className="object-contain mx-auto"
@@ -48,7 +48,7 @@ export default function LandingPage() {
           <span className="text-foreground">Outlast your friends.</span>
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-10 leading-relaxed">
-          The ultimate Survivor Season 50 fantasy league. Create a league, pick who gets voted out
+          The ultimate Survivor Season 51 fantasy league. Create a league, pick who gets voted out
           each week, allocate your points wisely, and see who truly has what it takes.
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
@@ -63,7 +63,7 @@ export default function LandingPage() {
         {/* Stats row */}
         <div className="mt-16 grid grid-cols-3 gap-8 md:gap-16">
           {[
-            { value: "24", label: "Castaways" },
+            { value: "21", label: "Castaways" },
             { value: "~14", label: "Episodes" },
             { value: "100×", label: "Winner Multiplier" },
           ].map((stat) => (
@@ -205,7 +205,7 @@ export default function LandingPage() {
           <span className="text-gradient">Outwit, Outplay, Outlast?</span>
         </h2>
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-          Season 50 is underway. Create your league and invite your tribe today.
+          Season 51 is underway. Create your league and invite your tribe today.
         </p>
         <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 h-13 text-base" asChild>
           <Link href="/auth/signup">Create Your League</Link>

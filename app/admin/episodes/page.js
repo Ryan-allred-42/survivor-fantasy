@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import EpisodeManager from "@/components/admin/EpisodeManager";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export const metadata = { title: "Episodes — Admin" };
 
@@ -11,12 +12,12 @@ export default async function AdminEpisodesPage() {
     supabase
       .from("survivor_episodes")
       .select("*, survivor_players(id, name), eliminated_player_ids")
-      .eq("season", 50)
+      .eq("season", CURRENT_SEASON)
       .order("week_number", { ascending: true }),
     supabase
       .from("survivor_players")
       .select("id, name, is_active")
-      .eq("season", 50)
+      .eq("season", CURRENT_SEASON)
       .order("name"),
   ]);
 
