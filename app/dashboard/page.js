@@ -6,8 +6,62 @@ import CardCreateLeague from "@/components/league/CardCreateLeague";
 import CardJoinLeague from "@/components/league/CardJoinLeague";
 import { Badge } from "@/components/ui/badge";
 import { SCORING_METHOD_LABEL } from "@/lib/utils";
+import { CURRENT_SEASON } from "@/lib/season";
 
 export const metadata = { title: "Dashboard — Survivor Fantasy" };
+
+function LeagueCard({ league, isOwner, idx }) {
+  return (
+    <Link href={`/league/${league.id}`} className="group">
+      <div
+        className="relative overflow-hidden border rounded-2xl p-5 transition-all h-full flex flex-col hover:scale-[1.02]"
+        style={{
+          background: "linear-gradient(135deg, oklch(0.18 0.06 35), oklch(0.14 0.04 40))",
+          borderColor: `oklch(0.38 0.12 ${35 + (idx * 8) % 30} / 0.5)`,
+          boxShadow: `0 0 20px oklch(0.65 0.22 38 / 0.08)`,
+        }}
+      >
+        {/* Warm ember glow in corner */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse 70% 60% at 100% 100%, oklch(0.65 0.22 38 / 0.10) 0%, transparent 65%)",
+          }}
+        />
+        {/* Hover glow */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{
+            background: "radial-gradient(ellipse 80% 70% at 50% 50%, oklch(0.65 0.22 38 / 0.07) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative flex items-start justify-between mb-3">
+          <h3 className="font-bold text-foreground group-hover:text-primary transition-colors text-sm leading-snug pr-2">
+            {league.name}
+          </h3>
+          {isOwner && (
+            <Badge className="bg-primary/15 text-primary border-primary/30 text-xs shrink-0">Owner</Badge>
+          )}
+        </div>
+        <div className="relative flex items-center justify-between mt-auto pt-3 border-t border-white/10">
+          <Badge
+            className="text-xs"
+            style={{
+              background: "oklch(0.65 0.22 38 / 0.15)",
+              color: "oklch(0.82 0.18 45)",
+              borderColor: "oklch(0.65 0.22 38 / 0.30)",
+            }}
+          >
+            {SCORING_METHOD_LABEL}
+          </Badge>
+          <span className="text-xs text-muted-foreground font-mono tracking-widest">
+            {league.join_code}
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -16,11 +70,21 @@ export default async function DashboardPage() {
 
   const { data: memberships } = await supabase
     .from("survivor_league_members")
-    .select("joined_at, survivor_leagues(id, name, scoring_method, join_code, owner_id)")
+    .select("joined_at, survivor_leagues(id, name, scoring_method, join_code, owner_id, season)")
     .eq("user_id", user.id)
     .order("joined_at", { ascending: false });
 
   const leagues = memberships?.map((m) => m.survivor_leagues).filter(Boolean) ?? [];
+
+  // Scope to the current season; older leagues go in Previous Seasons below
+  const currentLeagues = leagues.filter((l) => (l.season ?? CURRENT_SEASON) === CURRENT_SEASON);
+  const previousBySeason = {};
+  for (const l of leagues) {
+    const s = l.season ?? CURRENT_SEASON;
+    if (s === CURRENT_SEASON) continue;
+    (previousBySeason[s] ||= []).push(l);
+  }
+  const previousSeasons = Object.keys(previousBySeason).map(Number).sort((a, b) => b - a);
 
   return (
     <div className="min-h-screen flex flex-col relative">
@@ -75,63 +139,33 @@ export default async function DashboardPage() {
           <p className="text-muted-foreground text-sm">Survivor Season 51 · Fantasy</p>
         </div>
 
-        {/* ── 1. Active leagues ──────────────────────────── */}
-        {leagues.length > 0 && (
+        {/* ── 1. Current season leagues ──────────────────── */}
+        {currentLeagues.length > 0 && (
           <section className="mb-10">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-5">
+              Season {CURRENT_SEASON} Leagues
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {leagues.map((league, idx) => (
-                <Link key={league.id} href={`/league/${league.id}`} className="group">
-                  <div
-                    className="relative overflow-hidden border rounded-2xl p-5 transition-all h-full flex flex-col hover:scale-[1.02]"
-                    style={{
-                      background: "linear-gradient(135deg, oklch(0.18 0.06 35), oklch(0.14 0.04 40))",
-                      borderColor: `oklch(0.38 0.12 ${35 + (idx * 8) % 30} / 0.5)`,
-                      boxShadow: `0 0 20px oklch(0.65 0.22 38 / 0.08)`,
-                    }}
-                  >
-                    {/* Warm ember glow in corner */}
-                    <div
-                      className="absolute inset-0 pointer-events-none"
-                      style={{
-                        background: "radial-gradient(ellipse 70% 60% at 100% 100%, oklch(0.65 0.22 38 / 0.10) 0%, transparent 65%)",
-                      }}
-                    />
-                    {/* Hover glow */}
-                    <div
-                      className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{
-                        background: "radial-gradient(ellipse 80% 70% at 50% 50%, oklch(0.65 0.22 38 / 0.07) 0%, transparent 70%)",
-                      }}
-                    />
-                    <div className="relative flex items-start justify-between mb-3">
-                      <h3 className="font-bold text-foreground group-hover:text-primary transition-colors text-sm leading-snug pr-2">
-                        {league.name}
-                      </h3>
-                      {league.owner_id === user.id && (
-                        <Badge className="bg-primary/15 text-primary border-primary/30 text-xs shrink-0">Owner</Badge>
-                      )}
-                    </div>
-                    <div className="relative flex items-center justify-between mt-auto pt-3 border-t border-white/10">
-                      <Badge
-                        className="text-xs"
-                        style={{
-                          background: "oklch(0.65 0.22 38 / 0.15)",
-                          color: "oklch(0.82 0.18 45)",
-                          borderColor: "oklch(0.65 0.22 38 / 0.30)",
-                        }}
-                      >
-                        {SCORING_METHOD_LABEL}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground font-mono tracking-widest">
-                        {league.join_code}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
+              {currentLeagues.map((league, idx) => (
+                <LeagueCard key={league.id} league={league} isOwner={league.owner_id === user.id} idx={idx} />
               ))}
             </div>
           </section>
         )}
+
+        {/* ── Previous seasons leagues ────────────────────── */}
+        {previousSeasons.map((season) => (
+          <section key={season} className="mb-10">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-5">
+              Previous Seasons · Season {season}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {previousBySeason[season].map((league, idx) => (
+                <LeagueCard key={league.id} league={league} isOwner={league.owner_id === user.id} idx={idx} />
+              ))}
+            </div>
+          </section>
+        ))}
 
         {leagues.length === 0 && (
           <div className="text-center py-12 mb-8 text-muted-foreground">

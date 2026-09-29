@@ -20,11 +20,13 @@ export default async function PicksPage({ params }) {
 
   const { data: league } = await supabase
     .from("survivor_leagues")
-    .select("id, name, owner_id")
+    .select("id, name, owner_id, season")
     .eq("id", leagueId)
     .single();
 
   if (!league) notFound();
+
+  const leagueSeason = league.season ?? CURRENT_SEASON;
 
   // Verify membership (or auto-repair if owner row is missing)
   let member = null;
@@ -48,11 +50,11 @@ export default async function PicksPage({ params }) {
     member = existingMember;
   }
 
-  // Fetch current open episode
+  // Fetch current open episode for this league's season
   const { data: episode } = await supabase
     .from("survivor_episodes")
     .select("*")
-    .eq("season", CURRENT_SEASON)
+    .eq("season", leagueSeason)
     .eq("is_complete", false)
     .order("week_number", { ascending: true })
     .limit(1)
@@ -95,11 +97,11 @@ export default async function PicksPage({ params }) {
     );
   }
 
-  // Fetch active players
+  // Fetch active players for this league's season
   const { data: players } = await supabase
     .from("survivor_players")
     .select("id, name, tribe, photo_url")
-    .eq("season", CURRENT_SEASON)
+    .eq("season", leagueSeason)
     .eq("is_active", true)
     .order("name");
 

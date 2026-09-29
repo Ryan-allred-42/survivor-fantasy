@@ -50,11 +50,14 @@ export default async function LeaguePage({ params }) {
 
   const mulliganUsed = member?.mulligan_used ?? false;
 
+  // Scope all season data to the league's own season (previous-season leagues stay intact)
+  const leagueSeason = league.season ?? CURRENT_SEASON;
+
   // All episodes for this season
   const { data: episodes } = await supabase
     .from("survivor_episodes")
     .select("*")
-    .eq("season", CURRENT_SEASON)
+    .eq("season", leagueSeason)
     .order("week_number", { ascending: true });
 
   // Current episode: earliest incomplete
@@ -66,7 +69,7 @@ export default async function LeaguePage({ params }) {
   const { data: players } = await supabase
     .from("survivor_players")
     .select("id, name, tribe, photo_url, is_active, eliminated_week, placement")
-    .eq("season", CURRENT_SEASON)
+    .eq("season", leagueSeason)
     .order("name");
 
   const TRIBE_ORDER = ["Toka", "Savu"];
@@ -321,6 +324,9 @@ export default async function LeaguePage({ params }) {
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <Badge className="bg-secondary text-secondary-foreground border-border text-xs">
                 Full Season
+              </Badge>
+              <Badge className="bg-secondary text-secondary-foreground border-border text-xs">
+                Season {leagueSeason}
               </Badge>
               <span className="text-xs text-muted-foreground font-mono">Code: {league.join_code}</span>
               {currentEpisode && !isLocked && (

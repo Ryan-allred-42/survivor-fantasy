@@ -510,7 +510,7 @@ export async function getUserLeagues(userId) {
 
   const { data: memberships, error } = await supabase
     .from("survivor_league_members")
-    .select("league_id, joined_at, survivor_leagues(id, name, join_code, owner_id)")
+    .select("league_id, joined_at, survivor_leagues(id, name, join_code, owner_id, season)")
     .eq("user_id", userId)
     .order("joined_at", { ascending: false });
 

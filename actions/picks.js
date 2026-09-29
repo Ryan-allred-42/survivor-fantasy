@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { isEpisodeLocked } from "@/lib/utils";
 import { getActivePlayers, getEpisodeBudget, validateAllocations } from "@/lib/picks";
+import { CURRENT_SEASON } from "@/lib/season";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -25,7 +26,7 @@ export async function submitPicks({ leagueId, episodeId, guessedEliminatedPlayer
   // Verify episode is not locked
   const { data: episode } = await supabase
     .from("survivor_episodes")
-    .select("lock_time, is_complete, is_locked")
+    .select("lock_time, is_complete, is_locked, season")
     .eq("id", episodeId)
     .single();
 
@@ -48,8 +49,8 @@ export async function submitPicks({ leagueId, episodeId, guessedEliminatedPlayer
   // Get budget for this episode
   const budget = await getEpisodeBudget(user.id, leagueId, episodeId);
 
-  // Validate allocations
-  const activePlayers = await getActivePlayers();
+  // Validate allocations against the episode's own season
+  const activePlayers = await getActivePlayers(episode.season ?? CURRENT_SEASON);
   const filtered = (allocations ?? []).filter((a) => a.points > 0);
   const validation = validateAllocations(filtered, budget, activePlayers);
   if (!validation.valid) return { error: validation.error };
